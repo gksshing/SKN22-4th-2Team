@@ -16,9 +16,9 @@ License: MIT
 from __future__ import annotations
 
 import asyncio
-import logging
 import os
 import re
+import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple, AsyncGenerator
@@ -26,9 +26,18 @@ from typing import List, Dict, Any, Optional, Tuple, AsyncGenerator
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 import httpx
+import openai
 from openai import AsyncOpenAI
 import numpy as np
-from tenacity import retry, stop_after_attempt, wait_random_exponential, retry_if_exception_type
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_random_exponential,
+    retry_if_exception_type,
+    before_sleep_log,
+)
+
+from src.utils import get_structured_logger, log_api_call, OpenAICallMetrics
 
 load_dotenv()
 
@@ -43,11 +52,17 @@ except ImportError:
     json_dumps = json.dumps
 
 # =============================================================================
-# Logging Setup
+# Logging Setup — 구조화 로거 사용
 # =============================================================================
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_structured_logger(__name__)
+
+# Retry 대상 예외 (일시적 장애 → 재시도 가치 있음)
+_RETRYABLE_EXCEPTIONS = (
+    openai.RateLimitError,
+    openai.APITimeoutError,
+    openai.APIConnectionError,
+)
 
 
 # =============================================================================
@@ -228,6 +243,203 @@ class PatentAgent:
         return True
     
     # =========================================================================
+    # 공통 OpenAI API 래퍼 (Retry + 예외 처리 + 구조화 로깅)
+    # =========================================================================
+    
+    @retry(
+        wait=wait_random_exponential(min=1, max=30),
+        stop=stop_after_attempt(3),
+        retry=retry_if_exception_type(_RETRYABLE_EXCEPTIONS),
+        before_sleep=before_sleep_log(logger, log_level=30),  # WARNING
+        reraise=True,
+    )
+    async def _call_openai(
+        self,
+        *,
+        method_name: str,
+        model: str,
+        messages: List[Dict[str, str]],
+        temperature: float = 0.3,
+        max_tokens: Optional[int] = None,
+        response_format: Optional[Dict[str, str]] = None,
+    ) -> Any:
+        """
+        모든 OpenAI chat completion 호출을 래핑하는 내부 메서드.
+
+        - 예외별 처리: RateLimitError/APITimeoutError → retry, BadRequestError → 즉시 실패
+        - 토큰 사용량 · 응답 시간 구조화 로깅
+        """
+        start = time.perf_counter()
+        metrics = OpenAICallMetrics(method=method_name, model=model)
+        try:
+            kwargs: Dict[str, Any] = {
+                "model": model,
+                "messages": messages,
+                "temperature": temperature,
+            }
+            if max_tokens is not None:
+                kwargs["max_tokens"] = max_tokens
+            if response_format is not None:
+                kwargs["response_format"] = response_format
+
+            response = await self.client.chat.completions.create(**kwargs)
+
+            # 메트릭 수집
+            elapsed = (time.perf_counter() - start) * 1000
+            metrics.elapsed_ms = elapsed
+            if response.usage:
+                metrics.prompt_tokens = response.usage.prompt_tokens
+                metrics.completion_tokens = response.usage.completion_tokens
+                metrics.total_tokens = response.usage.total_tokens
+            log_api_call(logger, metrics)
+            return response
+
+        except openai.BadRequestError as e:
+            # 토큰 초과 등 — 재시도 무의미, 즉시 실패
+            metrics.elapsed_ms = (time.perf_counter() - start) * 1000
+            metrics.success = False
+            metrics.error = str(e)
+            metrics.error_type = "BadRequestError"
+            log_api_call(logger, metrics)
+            raise
+
+        except _RETRYABLE_EXCEPTIONS as e:
+            # tenacity가 retry하기 전에 로그 기록
+            metrics.elapsed_ms = (time.perf_counter() - start) * 1000
+            metrics.success = False
+            metrics.error = str(e)
+            metrics.error_type = type(e).__name__
+            log_api_call(logger, metrics)
+            raise
+
+        except Exception as e:
+            metrics.elapsed_ms = (time.perf_counter() - start) * 1000
+            metrics.success = False
+            metrics.error = str(e)
+            metrics.error_type = type(e).__name__
+            log_api_call(logger, metrics)
+            raise
+
+    @retry(
+        wait=wait_random_exponential(min=1, max=30),
+        stop=stop_after_attempt(3),
+        retry=retry_if_exception_type(_RETRYABLE_EXCEPTIONS),
+        before_sleep=before_sleep_log(logger, log_level=30),
+        reraise=True,
+    )
+    async def _call_openai_stream(
+        self,
+        *,
+        method_name: str,
+        model: str,
+        messages: List[Dict[str, str]],
+        temperature: float = 0.2,
+        max_tokens: Optional[int] = None,
+    ) -> AsyncGenerator[str, None]:
+        """
+        스트리밍 OpenAI 호출 래퍼.
+
+        chunk를 yield하며, 스트림 종료 후 총 토큰 수(chunk 카운트 근사)를 로깅합니다.
+        """
+        start = time.perf_counter()
+        metrics = OpenAICallMetrics(method=method_name, model=model)
+        chunk_count = 0
+        try:
+            kwargs: Dict[str, Any] = {
+                "model": model,
+                "messages": messages,
+                "stream": True,
+                "temperature": temperature,
+            }
+            if max_tokens is not None:
+                kwargs["max_tokens"] = max_tokens
+
+            response = await self.client.chat.completions.create(**kwargs)
+
+            async for chunk in response:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    chunk_count += 1
+                    yield chunk.choices[0].delta.content
+
+            # 스트림 완료 후 메트릭 기록
+            metrics.elapsed_ms = (time.perf_counter() - start) * 1000
+            metrics.completion_tokens = chunk_count  # 근사값
+            log_api_call(logger, metrics)
+
+        except openai.BadRequestError as e:
+            metrics.elapsed_ms = (time.perf_counter() - start) * 1000
+            metrics.success = False
+            metrics.error = str(e)
+            metrics.error_type = "BadRequestError"
+            log_api_call(logger, metrics)
+            yield f"\n\n⚠️ API 오류: {e}\n"
+
+        except _RETRYABLE_EXCEPTIONS as e:
+            metrics.elapsed_ms = (time.perf_counter() - start) * 1000
+            metrics.success = False
+            metrics.error = str(e)
+            metrics.error_type = type(e).__name__
+            log_api_call(logger, metrics)
+            raise  # tenacity가 재시도
+
+        except Exception as e:
+            metrics.elapsed_ms = (time.perf_counter() - start) * 1000
+            metrics.success = False
+            metrics.error = str(e)
+            metrics.error_type = type(e).__name__
+            log_api_call(logger, metrics)
+            yield f"\n\n⚠️ 분석 중 오류 발생: {e}\n"
+
+    @retry(
+        wait=wait_random_exponential(min=1, max=20),
+        stop=stop_after_attempt(3),
+        retry=retry_if_exception_type(_RETRYABLE_EXCEPTIONS),
+        before_sleep=before_sleep_log(logger, log_level=30),
+        reraise=True,
+    )
+    async def _call_embed(self, *, text: str) -> np.ndarray:
+        """
+        임베딩 API 래퍼 — retry + 타임아웃 + 구조화 로깅.
+        """
+        start = time.perf_counter()
+        metrics = OpenAICallMetrics(method="embed_text", model=EMBEDDING_MODEL)
+        try:
+            response = await self.client.embeddings.create(
+                model=EMBEDDING_MODEL,
+                input=text,
+            )
+            metrics.elapsed_ms = (time.perf_counter() - start) * 1000
+            if response.usage:
+                metrics.prompt_tokens = response.usage.prompt_tokens
+                metrics.total_tokens = response.usage.total_tokens
+            log_api_call(logger, metrics)
+            return np.array(response.data[0].embedding, dtype=np.float32)
+
+        except openai.BadRequestError as e:
+            metrics.elapsed_ms = (time.perf_counter() - start) * 1000
+            metrics.success = False
+            metrics.error = str(e)
+            metrics.error_type = "BadRequestError"
+            log_api_call(logger, metrics)
+            raise
+
+        except _RETRYABLE_EXCEPTIONS as e:
+            metrics.elapsed_ms = (time.perf_counter() - start) * 1000
+            metrics.success = False
+            metrics.error = str(e)
+            metrics.error_type = type(e).__name__
+            log_api_call(logger, metrics)
+            raise
+
+        except Exception as e:
+            metrics.elapsed_ms = (time.perf_counter() - start) * 1000
+            metrics.success = False
+            metrics.error = str(e)
+            metrics.error_type = type(e).__name__
+            log_api_call(logger, metrics)
+            raise
+    
+    # =========================================================================
     # Keyword Extraction for Hybrid Search
     # =========================================================================
     
@@ -294,28 +506,45 @@ class PatentAgent:
 
         user_prompt = f"아이디어: {user_idea}\n\n위 아이디어를 바탕으로 한 전문적인 가상 제1항(독립항)을 작성하십시오."
 
-        response = await self.client.chat.completions.create(
-            model=HYDE_MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.3,
-            max_tokens=500,
-        )
-        
-        hypothetical_claim = response.choices[0].message.content.strip()
-        logger.info(f"Generated hypothetical claim: {hypothetical_claim[:100]}...")
-        
-        return hypothetical_claim
+        try:
+            response = await self._call_openai(
+                method_name="generate_hypothetical_claim",
+                model=HYDE_MODEL,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.3,
+                max_tokens=500,
+            )
+            hypothetical_claim = response.choices[0].message.content.strip()
+            logger.info(f"Generated hypothetical claim: {hypothetical_claim[:100]}...")
+            return hypothetical_claim
+
+        except openai.BadRequestError:
+            # 토큰 초과 시 프롬프트 축소 후 재시도
+            logger.warning("HyDE 프롬프트 토큰 초과 — 입력을 축소하여 재시도합니다.")
+            short_idea = user_idea[:500]
+            response = await self._call_openai(
+                method_name="generate_hypothetical_claim_fallback",
+                model=HYDE_MODEL,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": f"아이디어: {short_idea}\n\n가상 제1항을 작성하십시오."}
+                ],
+                temperature=0.3,
+                max_tokens=300,
+            )
+            return response.choices[0].message.content.strip()
+
+        except Exception as e:
+            logger.error(f"HyDE 가상 청구항 생성 실패: {e}")
+            # 최소한의 fallback — 원본 아이디어를 반환하여 파이프라인 중단 방지
+            return user_idea
     
     async def embed_text(self, text: str) -> np.ndarray:
         """Generate embedding using OpenAI text-embedding-3-small."""
-        response = await self.client.embeddings.create(
-            model=EMBEDDING_MODEL,
-            input=text,
-        )
-        return np.array(response.data[0].embedding, dtype=np.float32)
+        return await self._call_embed(text=text)
     
     async def generate_multi_queries(self, user_idea: str) -> List[str]:
         """
@@ -336,7 +565,8 @@ JSON 형식으로 응답하십시오:
 }"""
         
         try:
-            response = await self.client.chat.completions.create(
+            response = await self._call_openai(
+                method_name="generate_multi_queries",
                 model=HYDE_MODEL,
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -554,7 +784,8 @@ JSON 형식으로 응답하십시오:
   "average_score": 전체평균점수
 }}"""
 
-        response = await self.client.chat.completions.create(
+        response = await self._call_openai(
+            method_name="grade_results",
             model=GRADING_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -625,7 +856,8 @@ JSON 형식으로 응답:
   "reasoning": "개선 이유"
 }}"""
 
-        response = await self.client.chat.completions.create(
+        response = await self._call_openai(
+            method_name="rewrite_query",
             model=GRADING_MODEL,
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
@@ -718,7 +950,8 @@ JSON 형식으로 응답:
         system_prompt, user_prompt = self._build_analysis_prompts(user_idea, patents_text)
         
         try:
-            response = await self.client.chat.completions.create(
+            response = await self._call_openai(
+                method_name="critical_analysis",
                 model=ANALYSIS_MODEL,
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -737,8 +970,9 @@ JSON 형식으로 응답:
             logger.warning(f"Falling back to {FALLBACK_MODEL}...")
             
             try:
-                # Fallback implementation
-                response = await self.client.chat.completions.create(
+                # Fallback 모델로 재시도
+                response = await self._call_openai(
+                    method_name="critical_analysis_fallback",
                     model=FALLBACK_MODEL,
                     messages=[
                         {"role": "system", "content": system_prompt},
@@ -857,20 +1091,17 @@ JSON 형식으로 응답:
 
 위 선행 특허들의 **청구항(Claims)**을 중심으로 아이디어와 정밀 대비 분석을 수행하십시오."""
 
-        response = await self.client.chat.completions.create(
+        async for token in self._call_openai_stream(
+            method_name="critical_analysis_stream",
             model=ANALYSIS_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            stream=True,
             temperature=0.2,
             max_tokens=2500,
-        )
-        
-        async for chunk in response:
-            if chunk.choices[0].delta.content:
-                yield chunk.choices[0].delta.content
+        ):
+            yield token
     
     def _build_analysis_prompts(self, user_idea: str, patents_text: str) -> Tuple[str, str]:
         """Build system and user prompts for analysis."""

@@ -1,9 +1,99 @@
 """
 Utility functions for the Short-Cut Patent Analysis App.
-State-less helper functions.
+State-less helper functions + API 호출 관측용 로깅 유틸리티.
 """
+from __future__ import annotations
+
+import json
+import logging
+import sys
+from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Optional
+
 import streamlit as st
+
+
+# =============================================================================
+# 구조화 로깅 유틸리티 (Structured Logging Utilities)
+# =============================================================================
+
+class _JsonFormatter(logging.Formatter):
+    """JSON 형식 로그 포매터 — 구조화된 로그 출력용."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        log_entry: dict = {
+            "timestamp": datetime.now(tz=__import__('datetime').timezone.utc).isoformat(),
+            "level": record.levelname,
+            "module": record.name,
+            "message": record.getMessage(),
+        }
+        # extra 필드 병합 (log_api_call 등에서 전달)
+        if hasattr(record, "extra_fields"):
+            log_entry.update(record.extra_fields)
+        return json.dumps(log_entry, ensure_ascii=False)
+
+
+def get_structured_logger(name: str, level: int = logging.INFO) -> logging.Logger:
+    """
+    JSON 구조화 로거 팩토리.
+
+    동일 이름으로 재호출 시 기존 로거를 반환합니다.
+    핸들러 중복 방지 로직 포함.
+    """
+    logger = logging.getLogger(name)
+    if not logger.handlers:
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(_JsonFormatter())
+        logger.addHandler(handler)
+        logger.setLevel(level)
+        logger.propagate = False
+    return logger
+
+
+@dataclass
+class OpenAICallMetrics:
+    """OpenAI API 단일 호출 메트릭 캡슐화."""
+
+    method: str = ""
+    model: str = ""
+    elapsed_ms: float = 0.0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+    success: bool = True
+    error: Optional[str] = None
+    error_type: Optional[str] = None
+
+
+def log_api_call(logger: logging.Logger, metrics: OpenAICallMetrics) -> None:
+    """
+    OpenAI API 호출 결과를 구조화 로그로 기록.
+
+    성공 시 INFO, 실패 시 ERROR 레벨로 출력합니다.
+    """
+    extra: dict = {
+        "api_method": metrics.method,
+        "model": metrics.model,
+        "elapsed_ms": round(metrics.elapsed_ms, 2),
+        "prompt_tokens": metrics.prompt_tokens,
+        "completion_tokens": metrics.completion_tokens,
+        "total_tokens": metrics.total_tokens,
+        "success": metrics.success,
+    }
+    if metrics.error:
+        extra["error"] = metrics.error
+        extra["error_type"] = metrics.error_type
+
+    record_msg = (
+        f"[OpenAI] {metrics.method} | model={metrics.model} | "
+        f"{metrics.elapsed_ms:.0f}ms | tokens={metrics.total_tokens}"
+    )
+
+    if metrics.success:
+        logger.info(record_msg, extra={"extra_fields": extra})
+    else:
+        logger.error(record_msg, extra={"extra_fields": extra})
 
 def get_risk_color(risk_level: str) -> tuple:
     """Get color scheme based on risk level."""
