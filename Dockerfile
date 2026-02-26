@@ -69,9 +69,8 @@ USER appuser
 # FastAPI 기본 포트
 EXPOSE 8000
 
-# 상태 점검 엔드포인트 활용
-HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+# 상태 점검은 ECS Task Definition(infra/ecs/task-definition-template.json)에서
+# 일원 관리합니다. Dockerfile HEALTHCHECK는 제거하여 응집도를 높입니다.
 
 # 앱 실행: entrypoint.sh가 환경 변수 검증 후 uvicorn을 호출합니다.
 # 실제 시크릿 로드는 Python bootstrap_secrets()에서 처리됩니다.
