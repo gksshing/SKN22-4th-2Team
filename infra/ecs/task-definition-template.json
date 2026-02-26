@@ -17,7 +17,7 @@
                 },
                 {
                     "name": "AWS_REGION",
-                    "value": "us-east-1"
+                    "value": "ap-northeast-2"
                 },
                 {
                     "name": "SECRET_NAME",
@@ -28,7 +28,7 @@
                 "logDriver": "awslogs",
                 "options": {
                     "awslogs-group": "/ecs/short-cut-api",
-                    "awslogs-region": "us-east-1",
+                    "awslogs-region": "ap-northeast-2",
                     "awslogs-stream-prefix": "ecs",
                     "awslogs-create-group": "true"
                 }
@@ -41,7 +41,7 @@
                 "interval": 30,
                 "timeout": 10,
                 "retries": 3,
-                "startPeriod": 20
+                "startPeriod": 30
             }
         }
     ],

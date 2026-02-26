@@ -247,6 +247,13 @@ jobs:
       - name: 소스 코드 체크아웃 (task-definition 파일 필요)
         uses: actions/checkout@v4
 
+      # ── 3-1. Task Definition 내 계정 ID 치환 ──────────────────────────────
+      # amazon-ecs-render-task-definition는 이미지만 교체하므로,
+      # <AWS_ACCOUNT_ID> 플레이스홀더를 실제 계정 ID로 미리 치환합니다.
+      - name: Task Definition 계정 ID 치환
+        run: |
+          sed -i "s/<AWS_ACCOUNT_ID>/${{ secrets.AWS_ACCOUNT_ID }}/g" infra/ecs/task-definition-template.json
+
       - name: ECS Task Definition 이미지 URI 업데이트
         id: task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
@@ -259,11 +266,12 @@ jobs:
       # ── 4. ECS 서비스 배포 ────────────────────────────────────────────────
       - name: ECS 서비스에 새 Task Definition 배포
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        timeout-minutes: 5
         with:
           task-definition: ${{ steps.task-def.outputs.task-definition }}
           service: ${{ secrets.ECS_SERVICE_PROD }}
           cluster: ${{ secrets.ECS_CLUSTER_PROD }}
-          # 새 태스크가 완전히 안정적이 될 때까지 대기 (타임아웃: 10분)
+          # 새 태스크 안정화 대기 (타임아웃: 5분 제한으로 CrashLoop 과금 방지)
           wait-for-service-stability: true
 
       # ── 5. 배포 결과 요약 ─────────────────────────────────────────────────
