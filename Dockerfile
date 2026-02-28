@@ -65,7 +65,6 @@ ENV BUILD_DATE=${BUILD_DATE} \
 # 애플리케이션 소스 복사
 COPY src/ ./src/
 COPY frontend/ ./frontend/
-COPY main.py .
 
 # ── entrypoint 스크립트 복사 및 실행 권한 설정 ────────────────────────────
 COPY entrypoint.sh /entrypoint.sh

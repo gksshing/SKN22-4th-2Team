@@ -194,6 +194,9 @@ class PineconeConfig:
     
     # Metadata path
     metadata_path: Optional[Path] = None
+    
+    # Metadata Truncation Length
+    max_metadata_length: int = 10000
 
 
 # =============================================================================

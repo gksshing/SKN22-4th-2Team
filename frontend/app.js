@@ -146,6 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         resultContainer.classList.remove('hidden');
         logOutput.innerHTML = '';
+        currentChunkContainer = null; // 새로 분석 시작 시 초기화
         statusBadge.textContent = '분석 진행 중...';
         statusBadge.className = 'px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full animate-pulse';
 
@@ -246,7 +247,32 @@ document.addEventListener('DOMContentLoaded', () => {
     /**
      * Append SSE log to output container
      */
+    let currentChunkContainer = null;
+
     function appendLogEvent(event) {
+        // 스트리밍 청크 처리: JSON 객체 배열을 하나씩 새로운 줄로 추가하지 않고 텍스트를 이어붙입니다.
+        if (event.chunk !== undefined) {
+            if (!currentChunkContainer) {
+                currentChunkContainer = document.createElement('div');
+                currentChunkContainer.className = 'log-entry text-slate-700 whitespace-pre-wrap mt-2 p-4 bg-white rounded-lg border border-slate-200 shadow-sm leading-relaxed';
+                logOutput.appendChild(currentChunkContainer);
+            }
+            currentChunkContainer.textContent += event.chunk;
+            logOutput.scrollTop = logOutput.scrollHeight;
+            return;
+        }
+
+        // 분석 완료 상태 처리
+        if (event.status === 'complete') {
+            const el = document.createElement('div');
+            el.className = 'log-entry result mt-4 mb-4';
+            el.innerHTML = `<div class="font-bold text-green-700"><i class="fa-solid fa-check-circle mr-1"></i> ${escapeHtml(event.message || '분석 완료')}</div>`;
+            logOutput.appendChild(el);
+            currentChunkContainer = null;
+            logOutput.scrollTop = logOutput.scrollHeight;
+            return;
+        }
+
         const el = document.createElement('div');
 
         // Render differently based on event type

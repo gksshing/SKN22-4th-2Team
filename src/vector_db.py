@@ -199,13 +199,10 @@ class PineconeClient:
         self.index = self.pc.Index(self.config.index_name)
         
         # ── BM25Encoder 셋업 ──
-        # HuggingFace 기반 모델 다운로드 시 HOME 디렉토리에 쓰기를 시도하므로,
-        # 컨테이너 환경에서 Permission denied를 방지하기 위해
-        # HOME과 캐시 경로를 /tmp로 임시 변경합니다.
+        # HuggingFace 기반 모델 다운로드 시 컨테이너 환경에서 Permission denied를 방지하기 위해
+        # HF_HOME 캐시 경로만 분리합니다.
         import os as _os
-        _original_home = _os.environ.get("HOME", "")
-        _os.environ["HOME"] = "/tmp"
-        _os.environ.setdefault("HF_HOME", "/app/.cache/huggingface")
+        _os.environ.setdefault("HF_HOME", "/tmp/huggingface")
         
         try:
             if self.bm25_params_path.exists():
@@ -219,9 +216,6 @@ class PineconeClient:
              # default() 재호출하면 같은 Permission denied 발생하므로
              # 빈 인코더로 초기화합니다. 검색 품질은 떨어지지만 서버가 죽지 않습니다.
              self.bm25_encoder = BM25Encoder()
-        finally:
-             # HOME 환경변수를 원래 값으로 복원합니다.
-             _os.environ["HOME"] = _original_home
 
         logger.info(f"Pinecone Client initialized (index={self.config.index_name})")
 
@@ -298,9 +292,9 @@ class PineconeClient:
                 
                 # Metadata Truncation Strategy
                 content_text = meta.get("content", "")
-                # Limit to 30KB text to be safe
-                if len(content_text.encode('utf-8')) > 30000:
-                    content_text = content_text[:10000]
+                # Limit text to be safe based on config
+                if len(content_text.encode('utf-8')) > self.config.max_metadata_length * 3:
+                    content_text = content_text[:self.config.max_metadata_length]
 
                 flat_meta = {
                     "text": content_text,
