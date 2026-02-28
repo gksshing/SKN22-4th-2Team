@@ -212,8 +212,11 @@ def bootstrap_secrets(
 
     logger.info("시크릿 부트스트랩 시작 (APP_ENV=%s, REGION=%s)", app_env, region or "default")
 
-    # 1. First, try to load .env if it exists (for local overrides)
-    _load_from_dotenv()
+    # 1. 로컬 환경에서만 .env 파일 로드 (프로덕션에서는 물리적 .env 접근 원천 차단)
+    if app_env != "production":
+        _load_from_dotenv()
+    else:
+        logger.info(".env 로드 건너뜀: 프로덕션 환경에서는 물리적 .env 파일을 사용하지 않습니다.")
 
     # 2. Then, load from AWS Secrets Manager if in production OR if explicitly requested via SECRET_NAME
     # If ECS native secret injection is used, critical keys might already be present.

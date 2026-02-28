@@ -29,8 +29,13 @@ for var, msg in critical_env_vars.items():
         missing_vars.append(var)
 
 if missing_vars:
-    logger.critical(f"Application is misconfigured! Missing variables: {', '.join(missing_vars)}")
-    # sys.exit(1) # ECS 헬스체크 통과를 위해 주석 처리
+    # Issue #33: 필수 환경 변수 누락 시 애플리케이션을 즉시 중단합니다 (Fast-fail).
+    # AWS Secrets Manager 또는 ECS Task Definition의 secrets 매핑이 정상적으로
+    # 구성되어 있다면 이 지점에 도달하지 않습니다.
+    raise ValueError(
+        f"애플리케이션 구동 불가: 필수 환경 변수가 누락되었습니다 → {', '.join(missing_vars)}. "
+        f"AWS Secrets Manager 또는 .env 설정을 확인하세요."
+    )
 
 # 검증 통과 완료 시 config 및 나머지 모듈 로드
 from src.config import config
