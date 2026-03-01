@@ -1,19 +1,32 @@
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 
 interface IdeaInputProps {
     onSubmit: (idea: string) => void;
     disabled: boolean;
+    /** 히스토리에서 원클릭 재분석 시 외부에서 주입되는 초기값 */
+    initialValue?: string;
 }
 
-export function IdeaInput({ onSubmit, disabled }: IdeaInputProps) {
-    const [idea, setIdea] = useState('');
+export function IdeaInput({ onSubmit, disabled, initialValue }: IdeaInputProps) {
+    const [idea, setIdea] = useState(initialValue || '');
+    const [inputError, setInputError] = useState(''); // alert() 대신 인라인 에러 메시지
+
+    // 히스토리 원클릭 재분석: 외부에서 initialValue가 변경되면 textarea 동기화
+    useEffect(() => {
+        if (initialValue !== undefined) {
+            setIdea(initialValue);
+            setInputError('');
+        }
+    }, [initialValue]);
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
         if (idea.trim().length < 10) {
-            alert("아이디어를 최소 10자 이상 구체적으로 입력해주세요.");
+            // Critical 수정: alert() → 인라인 에러 메시지 (UX 단절 방지)
+            setInputError('아이디어를 최소 10자 이상 구체적으로 입력해주세요.');
             return;
         }
+        setInputError('');
         onSubmit(idea);
     };
 
@@ -31,16 +44,25 @@ export function IdeaInput({ onSubmit, disabled }: IdeaInputProps) {
             <form onSubmit={handleSubmit} className="p-6">
                 <div className="mb-4">
                     <textarea
-                        className="w-full h-40 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none transition-all placeholder:text-gray-400 text-gray-800"
+                        className={`w-full h-40 p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none transition-all placeholder:text-gray-400 text-gray-800 ${inputError ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                            }`}
                         placeholder="예시: 음성 인식 기술을 활용하여 10개 강아지 국적 언어를 실시간으로 견주에게 번역해 주는 강아지 번역 목걸이"
                         value={idea}
-                        onChange={(e) => setIdea(e.target.value)}
+                        onChange={(e) => {
+                            setIdea(e.target.value);
+                            if (inputError) setInputError(''); // 입력 시 에러 자동 해제
+                        }}
                         disabled={disabled}
                         maxLength={1000}
                     />
-                    <div className="flex justify-between mt-2 text-xs text-gray-500">
-                        <span>최소 10자 이상 입력</span>
-                        <span>{idea.length} / 1000 자</span>
+                    <div className="flex justify-between mt-1 text-xs">
+                        {/* 인라인 에러 메시지 (alert 대체) */}
+                        {inputError ? (
+                            <span className="text-red-500 font-medium">{inputError}</span>
+                        ) : (
+                            <span className="text-gray-500">최소 10자 이상 입력</span>
+                        )}
+                        <span className="text-gray-500">{idea.length} / 1000 자</span>
                     </div>
                 </div>
 

@@ -1,9 +1,12 @@
 import { useState, useRef, useCallback } from 'react';
 import { RagAnalysisResult } from '../types/rag';
+import { getSessionId } from '../utils/session';
+import type { ErrorType } from '../components/common/ErrorFallback';
 
 export interface RagErrorInfo {
     title: string;
     message: string;
+    errorType?: ErrorType; // ErrorFallback 타입 기반 분기를 위한 에러 종류
 }
 
 export function useRagStream() {
@@ -54,7 +57,7 @@ export function useRagStream() {
             // 백엔드 AnalyzeRequest 스키마 필드명에 맞춰 요청 Body 구성
             const reqBody = {
                 user_idea: userIdea,
-                user_id: window.ENV?.USER_ID || 'test_user_webapp', // TODO: JWT 인증으로 교체 예정
+                user_id: getSessionId(), // UUID 세션 ID 사용 (Issue #24)
                 use_hybrid: useHybrid,
                 ipc_filters: ipcFilters && ipcFilters.length > 0 ? ipcFilters : null,
                 stream: true,
@@ -65,6 +68,7 @@ export function useRagStream() {
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'text/event-stream',
+                    'X-Session-ID': getSessionId(), // Issue #24: 세션 식별자 헤더
                 },
                 body: JSON.stringify(reqBody),
                 signal: abortController.signal
@@ -72,7 +76,9 @@ export function useRagStream() {
 
             if (!response.ok) {
                 // HTTP Status 분기 처리
-                if (response.status === 413 || response.status === 422) {
+                if (response.status === 429) {
+                    throw new Error('RATE_LIMIT'); // Issue #25: Rate Limit 초과 전용 에러
+                } else if (response.status === 413 || response.status === 422) {
                     throw new Error('TOKEN_EXCEEDED');
                 } else if (response.status === 404) {
                     throw new Error('NOT_FOUND');
@@ -173,17 +179,26 @@ export function useRagStream() {
                 if (error.message === 'TOKEN_EXCEEDED') {
                     setErrorInfo({
                         title: '입력 텍스트가 너무 깁니다 🚫',
-                        message: '입력하신 특허 아이디어가 백엔드 처리 한도를 초과했습니다.'
+                        message: '입력하신 특허 아이디어가 백엔드 처리 한도를 초과했습니다.',
+                        errorType: 'TOKEN_EXCEEDED',
+                    });
+                } else if (error.message === 'RATE_LIMIT') {
+                    setErrorInfo({
+                        title: '오늘의 분석 한도를 소진했습니다 🚫',
+                        message: '일일 무료 분석 횟수(10회)를 모두 사용했습니다. 내일 다시 시도해 주세요.',
+                        errorType: 'RATE_LIMIT',
                     });
                 } else if (error.message === 'NOT_FOUND') {
                     setErrorInfo({
                         title: '유사 특허 결과를 찾지 못했습니다 📭',
-                        message: '입력하신 내용과 일치하는 선행 특허가 없습니다.'
+                        message: '입력하신 내용과 일치하는 선행 특허가 없습니다.',
+                        errorType: 'NOT_FOUND',
                     });
                 } else {
                     setErrorInfo({
                         title: '네트워크 연결 오류 🔌',
-                        message: '일시적인 연결 문제가 발생했습니다. 백엔드 서버가 켜져 있는지 확인하고 잠시 후 다시 시도해 주세요.'
+                        message: '일시적인 연결 문제가 발생했습니다. 백엔드 서버가 켜져 있는지 확인하고 잠시 후 다시 시도해 주세요.',
+                        errorType: 'NETWORK_ERROR',
                     });
                 }
             }
