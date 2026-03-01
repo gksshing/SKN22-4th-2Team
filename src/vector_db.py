@@ -177,25 +177,32 @@ class PineconeClient:
         self.config = pinecone_config or config.pinecone
         self.embedding_dim = embedding_dim or config.embedding.embedding_dim
         
-        # Initialize Pinecone
+        # ── 방어적 초기화: 모든 인스턴스 속성을 외부 API 호출 전에 기본값으로 설정 ──
+        # Pinecone/BM25 연결이 실패하더라도 AttributeError 방지
+        self.pc: Any = None
+        self.index: Any = None
+        self.metadata: Dict[str, Dict[str, Any]] = {}
+        self.metadata_path = self.config.metadata_path or INDEX_DIR / "pinecone_metadata.json"
+        self.bm25_params_path = INDEX_DIR / "bm25_params.json"
+        self.bm25_encoder = BM25Encoder()  # 빈 인코더 기본값
+        
+        # ── Pinecone 클라이언트 초기화 ──
         if not self.config.api_key:
             raise ValueError("PINECONE_API_KEY not set")
             
         self.pc = Pinecone(api_key=self.config.api_key)
         
-        # Ensure index exists (Auto-creation for reset scenarios)
+        # 인덱스 존재 확인 (Auto-creation for reset scenarios)
         if not skip_init_check:
             self._ensure_index_exists()
             
         self.index = self.pc.Index(self.config.index_name)
         
-        # Local metadata cache (Synchronized with FaissClient logic)
-        self.metadata: Dict[str, Dict[str, Any]] = {}
-        self.metadata_path = self.config.metadata_path or INDEX_DIR / "pinecone_metadata.json"
-        
-        # Setup BM25 Encoder (Serverless Hybrid)
-        # We need to load fitted parameters if available, otherwise start new
-        self.bm25_params_path = INDEX_DIR / "bm25_params.json"
+        # ── BM25Encoder 셋업 ──
+        # HuggingFace 기반 모델 다운로드 시 컨테이너 환경에서 Permission denied를 방지하기 위해
+        # HF_HOME 캐시 경로만 분리합니다.
+        import os as _os
+        _os.environ.setdefault("HF_HOME", "/tmp/huggingface")
         
         try:
             if self.bm25_params_path.exists():
@@ -205,8 +212,10 @@ class PineconeClient:
                 self.bm25_encoder = BM25Encoder.default()
                 logger.info("Initialized default BM25Encoder (will need fitting)")
         except Exception as e:
-             logger.warning(f"Failed to load BM25 encoder: {e}. Using default.")
-             self.bm25_encoder = BM25Encoder.default()
+             logger.warning(f"Failed to load BM25 encoder: {e}. Using empty encoder.")
+             # default() 재호출하면 같은 Permission denied 발생하므로
+             # 빈 인코더로 초기화합니다. 검색 품질은 떨어지지만 서버가 죽지 않습니다.
+             self.bm25_encoder = BM25Encoder()
 
         logger.info(f"Pinecone Client initialized (index={self.config.index_name})")
 
@@ -283,9 +292,9 @@ class PineconeClient:
                 
                 # Metadata Truncation Strategy
                 content_text = meta.get("content", "")
-                # Limit to 30KB text to be safe
-                if len(content_text.encode('utf-8')) > 30000:
-                    content_text = content_text[:10000]
+                # Limit text to be safe based on config
+                if len(content_text.encode('utf-8')) > self.config.max_metadata_length * 3:
+                    content_text = content_text[:self.config.max_metadata_length]
 
                 flat_meta = {
                     "text": content_text,
