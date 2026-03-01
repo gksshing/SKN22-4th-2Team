@@ -183,8 +183,6 @@ def create_app() -> FastAPI:
             "build_branch": os.getenv("GIT_BRANCH", "unknown"),
         }
 
-    app.mount("/", StaticFiles(directory="frontend"), name="frontend")
-
     return app
 
 app = create_app()
