@@ -1,5 +1,5 @@
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from sqlalchemy.orm import Session
 from src.database.connection import get_db
 from src.database.models import User
@@ -43,10 +43,10 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
     
     return new_user
 
-@router.post("/login", response_model=Token)
+@router.post("/login")
 @limiter.limit("5/minute")
-def login(request: Request, user_in: UserLogin, db: Session = Depends(get_db)):
-    """Authenticate user and return tokens."""
+def login(request: Request, response: Response, user_in: UserLogin, db: Session = Depends(get_db)):
+    """Authenticate user and issue JWTs via Set-Cookie (HttpOnly, Secure)."""
     user = db.query(User).filter(User.email == user_in.email).first()
     if not user or not verify_password(user_in.password, user.hashed_password):
         raise HTTPException(
@@ -65,8 +65,28 @@ def login(request: Request, user_in: UserLogin, db: Session = Depends(get_db)):
     access_token = create_access_token(data={"sub": user.email})
     refresh_token = create_refresh_token(data={"sub": user.email})
     
+    # 1. Access Token Cookie 설정 (HttpOnly, Secure, SameSite=Lax)
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=True,  # HTTPS 환경에서만 전송됨
+        samesite="lax",
+        max_age=3600  # 1시간
+    )
+    
+    # 2. Refresh Token Cookie 설정
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=86400 * 7  # 7일
+    )
+    
     return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer"
+        "status": "success",
+        "message": "로그인에 성공하였습니다.",
+        "user": {"email": user.email}
     }
