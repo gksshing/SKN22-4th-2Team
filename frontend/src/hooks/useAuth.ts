@@ -60,15 +60,10 @@ export function useAuth(): UseAuthReturn {
     const signup = useCallback(async (params: SignupParams) => {
         setIsLoading(true);
         try {
-            await authService.signup(params);
-        } catch (error: any) {
-            console.error('Signup failed:', error);
-            const message = error.response?.data?.detail || '회원가입에 실패했습니다. 이미 가입된 이메일이거나 입력 정보가 올바르지 않습니다.';
-            window.dispatchEvent(new CustomEvent('auth:error', { detail: { message } }));
-            throw new Error(message);
+
         } finally {
             setIsLoading(false);
-        }
+      }
     }, []);
 
     const fetchMe = useCallback(async () => {
