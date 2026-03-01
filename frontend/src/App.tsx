@@ -41,10 +41,10 @@ function App() {
     }, [sessionExpiredMsg, clearSessionExpiredMsg]);
 
     // Issue #48: 앱 마운트 시 세션 자동 복원 (HttpOnly 쿠키 기반)
-    // TODO: Backend /api/v1/auth/me 개통 후 아래 주석 해제
+    // TODO(Backend-개통-1/2): /api/v1/auth/me 개통 후 아래 주석 해제
     // useEffect(() => { fetchMe(); }, [fetchMe]);
 
-    // TODO: Backend /api/v1/auth/me 개통 후 아래 주석 해제 → 로그인 라우팅 활성화
+    // TODO(Backend-개통-2/2): 로그인 라우팅 활성화 주석 해제
     // if (!user) {
     //     if (authView === 'signup') {
     //         return <SignupForm onSuccess={() => setAuthView('login')} onNavigateToLogin={() => setAuthView('login')} onSignup={signup} isLoading={isAuthLoading} />;
