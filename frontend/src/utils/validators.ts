@@ -5,7 +5,7 @@
  * 각 함수는 유효하면 true, 유효하지 않으면 에러 문자열을 반환합니다.
  */
 
-/** 이메일 형식 검증 (RFC 5322 간략 버전) */
+/** 이메일 형식 검증 */
 export function validateEmail(value: string): string | true {
     if (!value.trim()) return '이메일을 입력해주세요.';
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -15,10 +15,7 @@ export function validateEmail(value: string): string | true {
 
 /**
  * 비밀번호 복잡도 검증
- * - 최소 8자
- * - 영문자 1개 이상
- * - 숫자 1개 이상
- * - 특수문자(@$!%*#?&) 1개 이상
+ * - 최소 8자, 영문자 1개 이상, 숫자 1개 이상, 특수문자 1개 이상
  */
 export function validatePassword(value: string): string | true {
     if (!value) return '비밀번호를 입력해주세요.';

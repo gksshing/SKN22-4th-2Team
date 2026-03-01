@@ -8,9 +8,13 @@ import { ResultView } from './components/Result/ResultView';
 import { ErrorFallback } from './components/common/ErrorFallback';
 import { HistorySidebar } from './components/History/HistorySidebar';
 import { useRagStream } from './hooks/useRagStream';
+// Issue #46: Auth 컴포넌트 (Backend /auth/me 개통 후 조건부 라우팅 활성화)
 import { useAuth } from './hooks/useAuth';
 import { LoginForm } from './components/Auth/LoginForm';
 import { SignupForm } from './components/Auth/SignupForm';
+// Issue #47: 세션 만료 전역 토스트 (auth:session-expired 이벤트 수신)
+import { SessionExpiredToast } from './components/Auth/SessionExpiredToast';
+
 
 function App() {
     const [idea, setIdea] = useState('');
@@ -21,34 +25,29 @@ function App() {
     /** 히스토리 자동 갱신 카운터: isComplete 전환마다 증가 */
     const [refreshCount, setRefreshCount] = useState(0);
 
-    // Warning 반영: Auth 조건부 라우팅 구조 (Backend /auth/me 개통 전까지는 isLoggedIn=false로 메인화면 유지)
+    // ========== Issue #46: Auth 상태 관리 ==========
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { user, isLoading: isAuthLoading, login, signup, sessionExpiredMsg, clearSessionExpiredMsg } = useAuth();
-    /** 인증 상태 확인 완료 여부 (fetchMe 응답 후 true) */
-    const [isAuthChecked, setIsAuthChecked] = useState(false);
-    /** 로그인 / 회원가입 화면 토글 */
+    /** 로그인 / 회원가입 화면 전환 상태 */
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [authView, setAuthView] = useState<'login' | 'signup'>('login');
 
-    // TODO: Backend /api/v1/auth/me 개통 후 활성화
-    // 현재는 fetchMe가 실패해도 isAuthChecked=true로 처리 → 기존 메인화면 유지
-    // useEffect(() => {
-    //     fetchMe().finally(() => setIsAuthChecked(true));
-    // }, [fetchMe]);
-
-    // 임시: Auth API 개통 전까지 인증 체크 생략 (항상 메인화면 표시)
-    useEffect(() => {
-        setIsAuthChecked(true);
-    }, []);
-
-    // 세션 만료 토스트 표시 (auth:session-expired 이벤트 수신)
+    // 세션 만료 메시지 처리
     useEffect(() => {
         if (sessionExpiredMsg) {
-            // TODO: 전용 토스트 컴포넌트 연결 (현재는 콘솔 로그로 대체)
-            console.warn('[Auth]', sessionExpiredMsg);
+            console.warn('[Auth] 세션 만료:', sessionExpiredMsg);
             clearSessionExpiredMsg();
         }
     }, [sessionExpiredMsg, clearSessionExpiredMsg]);
+
+    // TODO: Backend /api/v1/auth/me 개통 후 아래 주석 해제 → 로그인 라우팅 활성화
+    // if (!user) {
+    //     if (authView === 'signup') {
+    //         return <SignupForm onSuccess={() => setAuthView('login')} onNavigateToLogin={() => setAuthView('login')} onSignup={signup} isLoading={isAuthLoading} />;
+    //     }
+    //     return <LoginForm onSuccess={() => {}} onNavigateToSignup={() => setAuthView('signup')} onLogin={login} isLoading={isAuthLoading} />;
+    // }
+    // ================================================
 
     // RAG 분석 상태 관리 훅
     const {
@@ -91,20 +90,6 @@ function App() {
         }
     }, [isComplete]);
 
-    // Auth 체크 완료 전: 빈 로딩 화면
-    if (!isAuthChecked || isAuthLoading) {
-        return <div className="min-h-screen bg-slate-900" aria-label="인증 확인 중" />;
-    }
-
-    // Auth 체크 완료 + 미로그인: 로그인/회원가입 화면 표시
-    // TODO: Backend /auth/me 개통 후 'user === null' 조건 활성화
-    // if (!user) {
-    //     if (authView === 'signup') {
-    //         return <SignupForm onSuccess={() => setAuthView('login')} onNavigateToLogin={() => setAuthView('login')} onSignup={signup} isLoading={isAuthLoading} />;
-    //     }
-    //     return <LoginForm onSuccess={() => {}} onNavigateToSignup={() => setAuthView('signup')} onLogin={login} isLoading={isAuthLoading} />;
-    // }
-
     return (
         <div className="min-h-screen bg-gray-50">
             {/* 페이지 헤더 */}
@@ -115,6 +100,10 @@ function App() {
 
             {/* 통신 지연 안내 토스트 (30초 초과 시 표출) */}
             <TimeoutToast isAnalyzing={isAnalyzing} timeoutMs={30000} />
+
+            {/* Issue #47: 세션 만료 토스트 — 전역 마운트 (auth:session-expired 이벤트 수신 시 노출) */}
+            <SessionExpiredToast />
+
 
             {/* 메인 2단 레이아웃: 좌측 히스토리 사이드바 + 우측 메인 콘텐츠 */}
             <main className="flex flex-col md:flex-row gap-6 p-6 max-w-7xl mx-auto">
