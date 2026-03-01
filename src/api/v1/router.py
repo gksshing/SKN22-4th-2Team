@@ -4,7 +4,7 @@ from typing import Any
 
 from src.api.schemas.request import AnalyzeRequest
 from src.api.schemas.response import HistoryResponse
-from src.api.dependencies import get_patent_agent, get_history_manager
+from src.api.dependencies import get_current_user, get_patent_agent, get_history_manager
 from src.api.services.analyze_service import process_analysis_stream
 from src.patent_agent import PatentAgent
 from src.history_manager import HistoryManager
@@ -18,6 +18,7 @@ router = APIRouter()
 async def analyze_patent(
     request: AnalyzeRequest,
     req: Request,
+    current_user: str = Depends(get_current_user),
     agent: PatentAgent = Depends(get_patent_agent),
     history: HistoryManager = Depends(get_history_manager)
 ):
@@ -37,8 +38,8 @@ async def analyze_patent(
                 stream=False,
                 ipc_filters=request.ipc_filters
             )
-            # Save history
-            history.save_analysis(result, user_id=request.user_id)
+            # Save history (using current_user from token)
+            history.save_analysis(result, user_id=current_user)
             return result
     except Exception as e:
         logger.error(f"[v51c8a7b] Error during analysis: {e}", exc_info=True)
@@ -46,13 +47,13 @@ async def analyze_patent(
 
 @router.get("/history", summary="과거 검색 기록 조회", response_model=HistoryResponse)
 async def get_history(
-    user_id: str = Query(..., description="사용자 식별자"),
     limit: int = Query(20, description="최대 조회 개수"),
+    current_user: str = Depends(get_current_user),
     history: HistoryManager = Depends(get_history_manager)
 ):
     try:
-        history_items = history.load_recent(user_id=user_id, limit=limit)
-        return HistoryResponse(user_id=user_id, history=history_items)
+        history_items = history.load_recent(user_id=current_user, limit=limit)
+        return HistoryResponse(user_id=current_user, history=history_items)
     except Exception as e:
-        logger.error(f"Error retrieving history: {e}")
+        logger.error(f"[v51c8a7b] Error retrieving history for {current_user}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to retrieve history")
