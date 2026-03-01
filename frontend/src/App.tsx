@@ -8,6 +8,9 @@ import { ResultView } from './components/Result/ResultView';
 import { ErrorFallback } from './components/common/ErrorFallback';
 import { HistorySidebar } from './components/History/HistorySidebar';
 import { useRagStream } from './hooks/useRagStream';
+import { useAuth } from './hooks/useAuth';
+import { LoginForm } from './components/Auth/LoginForm';
+import { SignupForm } from './components/Auth/SignupForm';
 
 function App() {
     const [idea, setIdea] = useState('');
@@ -17,6 +20,35 @@ function App() {
     const [historyIdea, setHistoryIdea] = useState<string | undefined>(undefined);
     /** 히스토리 자동 갱신 카운터: isComplete 전환마다 증가 */
     const [refreshCount, setRefreshCount] = useState(0);
+
+    // Warning 반영: Auth 조건부 라우팅 구조 (Backend /auth/me 개통 전까지는 isLoggedIn=false로 메인화면 유지)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { user, isLoading: isAuthLoading, login, signup, sessionExpiredMsg, clearSessionExpiredMsg } = useAuth();
+    /** 인증 상태 확인 완료 여부 (fetchMe 응답 후 true) */
+    const [isAuthChecked, setIsAuthChecked] = useState(false);
+    /** 로그인 / 회원가입 화면 토글 */
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [authView, setAuthView] = useState<'login' | 'signup'>('login');
+
+    // TODO: Backend /api/v1/auth/me 개통 후 활성화
+    // 현재는 fetchMe가 실패해도 isAuthChecked=true로 처리 → 기존 메인화면 유지
+    // useEffect(() => {
+    //     fetchMe().finally(() => setIsAuthChecked(true));
+    // }, [fetchMe]);
+
+    // 임시: Auth API 개통 전까지 인증 체크 생략 (항상 메인화면 표시)
+    useEffect(() => {
+        setIsAuthChecked(true);
+    }, []);
+
+    // 세션 만료 토스트 표시 (auth:session-expired 이벤트 수신)
+    useEffect(() => {
+        if (sessionExpiredMsg) {
+            // TODO: 전용 토스트 컴포넌트 연결 (현재는 콘솔 로그로 대체)
+            console.warn('[Auth]', sessionExpiredMsg);
+            clearSessionExpiredMsg();
+        }
+    }, [sessionExpiredMsg, clearSessionExpiredMsg]);
 
     // RAG 분석 상태 관리 훅
     const {
@@ -58,6 +90,20 @@ function App() {
             setRefreshCount((c) => c + 1);
         }
     }, [isComplete]);
+
+    // Auth 체크 완료 전: 빈 로딩 화면
+    if (!isAuthChecked || isAuthLoading) {
+        return <div className="min-h-screen bg-slate-900" aria-label="인증 확인 중" />;
+    }
+
+    // Auth 체크 완료 + 미로그인: 로그인/회원가입 화면 표시
+    // TODO: Backend /auth/me 개통 후 'user === null' 조건 활성화
+    // if (!user) {
+    //     if (authView === 'signup') {
+    //         return <SignupForm onSuccess={() => setAuthView('login')} onNavigateToLogin={() => setAuthView('login')} onSignup={signup} isLoading={isAuthLoading} />;
+    //     }
+    //     return <LoginForm onSuccess={() => {}} onNavigateToSignup={() => setAuthView('signup')} onLogin={login} isLoading={isAuthLoading} />;
+    // }
 
     return (
         <div className="min-h-screen bg-gray-50">

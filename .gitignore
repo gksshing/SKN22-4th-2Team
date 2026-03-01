@@ -91,6 +91,8 @@ pytest.ini
 # 빌드 결과물 (Vite Build Output)
 frontend/dist/
 frontend/dist-ssr/
+# Node.js 의존성 — Docker 빌드 시 컨테이너 내부에서 설치하므로 Git 추적 제외
+frontend/node_modules/
 # 환경 변수 분리
 frontend/.env
 frontend/.env.*
