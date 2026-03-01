@@ -5,6 +5,7 @@ from src.database.connection import get_db
 from src.database.models import User
 from src.api.schemas.auth import UserCreate, UserLogin, UserResponse, Token
 from src.api.services.security import get_password_hash, verify_password, create_access_token, create_refresh_token
+from src.api.dependencies import get_current_user
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -90,3 +91,21 @@ def login(request: Request, response: Response, user_in: UserLogin, db: Session 
         "message": "로그인에 성공하였습니다.",
         "user": {"email": user.email}
     }
+
+@router.get("/me", response_model=UserResponse)
+def get_me(current_user: str = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get current logged in user information."""
+    user = db.query(User).filter(User.email == current_user).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="사용자를 찾을 수 없습니다."
+        )
+    return user
+
+@router.post("/logout")
+def logout(response: Response):
+    """Logout by clearing cookies."""
+    response.delete_cookie(key="access_token")
+    response.delete_cookie(key="refresh_token")
+    return {"status": "success", "message": "로그아웃 되었습니다."}
