@@ -37,5 +37,5 @@ class HistoryItemResponse(BaseModel):
     result_json: AnalyzeResponse
 
 class HistoryResponse(BaseModel):
-    user_id: str
-    history: List[Any]  # Can be list of parsed JSONs
+    user_id: str = Field(..., description="사용자 ID (세션 ID에 해당)")
+    history: List[Dict[str, Any]] = Field(..., description="검색 이력 목록 (최신순)")

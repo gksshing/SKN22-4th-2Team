@@ -46,7 +46,7 @@ async def analyze_patent(
 
 @router.get("/history", summary="과거 검색 기록 조회", response_model=HistoryResponse)
 async def get_history(
-    user_id: str = Query(..., description="사용자 식별자"),
+    user_id: str = Query(default="anonymous", description="사용자 식별자(Session ID)"),
     limit: int = Query(20, description="최대 조회 개수"),
     history: HistoryManager = Depends(get_history_manager)
 ):
@@ -54,5 +54,5 @@ async def get_history(
         history_items = history.load_recent(user_id=user_id, limit=limit)
         return HistoryResponse(user_id=user_id, history=history_items)
     except Exception as e:
-        logger.error(f"Error retrieving history: {e}")
+        logger.error(f"[v51c8a7b] Error retrieving history for {user_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to retrieve history")
