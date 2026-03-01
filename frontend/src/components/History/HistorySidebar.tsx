@@ -26,6 +26,8 @@ export function HistorySidebar({ onSelectIdea, isAnalyzing, refreshTrigger }: Hi
     const [histories, setHistories] = useState<HistoryItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [fetchError, setFetchError] = useState<string | null>(null);
+    const [keyword, setKeyword] = useState('');
+    const [sortBy, setSortBy] = useState('desc');
 
     // 히스토리 데이터 조회 (Query Parameter + X-Session-ID 헤더)
     const fetchHistory = useCallback(async () => {
@@ -33,7 +35,12 @@ export function HistorySidebar({ onSelectIdea, isAnalyzing, refreshTrigger }: Hi
         setFetchError(null);
         const sessionId = getSessionId();
         try {
-            const res = await fetch(`${API_BASE_URL}/api/v1/history?user_id=${sessionId}`, {
+            const queryParams = new URLSearchParams({
+                user_id: sessionId,
+                ...(keyword && { keyword }),
+                ...(sortBy && { sort_by: sortBy })
+            });
+            const res = await fetch(`${API_BASE_URL}/api/v1/history?${queryParams.toString()}`, {
                 headers: {
                     'X-Session-ID': sessionId, // Issue #24: 세션 식별자 헤더
                 },
@@ -47,7 +54,7 @@ export function HistorySidebar({ onSelectIdea, isAnalyzing, refreshTrigger }: Hi
         } finally {
             setIsLoading(false);
         }
-    }, []); // API_BASE_URL이 컴포넌트 외부 상수이므로 deps 비우 가능
+    }, [keyword, sortBy]);
 
     useEffect(() => {
         fetchHistory();
@@ -84,6 +91,37 @@ export function HistorySidebar({ onSelectIdea, isAnalyzing, refreshTrigger }: Hi
                     title="새로고침"
                 >
                     {isLoading ? '로딩 중...' : '새로고침'}
+                </button>
+            </div>
+
+            {/* 필터 & 정렬 컨트롤 */}
+            <div className="flex flex-col gap-2 px-1">
+                <input
+                    type="text"
+                    value={keyword}
+                    onChange={(e) => setKeyword(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && fetchHistory()}
+                    placeholder="히스토리 검색..."
+                    className="w-full text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    disabled={isLoading}
+                />
+                <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="w-full text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                    disabled={isLoading}
+                >
+                    <option value="desc">최신순</option>
+                    <option value="asc">오래된순</option>
+                    <option value="risk_desc">위험도 높은순</option>
+                    <option value="risk_asc">위험도 낮은순</option>
+                </select>
+                <button
+                    onClick={fetchHistory}
+                    className="w-full py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 transition-colors"
+                    disabled={isLoading}
+                >
+                    적용
                 </button>
             </div>
 
