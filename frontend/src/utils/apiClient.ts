@@ -60,10 +60,8 @@ function _redirectToLogin(): void {
     // Warning 반영: 강제 이동 전 짧은 안내 표시
     const event = new CustomEvent('auth:session-expired');
     window.dispatchEvent(event);
-    // 짧은 지연 후 이동 (토스트 UI가 표시될 시간 확보)
-    setTimeout(() => {
-        window.location.href = AUTH_ROUTES.LOGIN;
-    }, 500);
+    // 즉시 이동
+    window.location.href = AUTH_ROUTES.LOGIN;
 }
 
 export default apiClient;

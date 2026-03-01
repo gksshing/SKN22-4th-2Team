@@ -8,8 +8,6 @@ import { HistorySidebar } from './components/History/HistorySidebar';
 import { useRagStream } from './hooks/useRagStream';
 // Issue #46: Auth 컴포넌트 (Backend /auth/me 개통 후 조건부 라우팅 활성화)
 import { useAuth } from './hooks/useAuth';
-import { LoginForm } from './components/Auth/LoginForm';
-import { SignupForm } from './components/Auth/SignupForm';
 // Issue #47: 세션 만료 전역 토스트 (auth:session-expired 이벤트 수신)
 import { SessionExpiredToast } from './components/Auth/SessionExpiredToast';
 import { AuthGuard } from './components/Auth/AuthGuard';
@@ -82,92 +80,80 @@ function App() {
     }, [isComplete]);
 
     return (
-        <AuthGuard>
-            {!user ? (
-                <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                    {authView === 'signup' ? (
-                        <SignupForm
-                            onSuccess={() => setAuthView('login')}
-                            onNavigateToLogin={() => setAuthView('login')}
-                            onSignup={signup}
-                            isLoading={isAuthLoading}
-                        />
-                    ) : (
-                        <LoginForm
-                            onSuccess={fetchMe}
-                            onNavigateToSignup={() => setAuthView('signup')}
-                            onLogin={login}
-                            isLoading={isAuthLoading}
-                        />
-                    )}
-                </div>
-            ) : (
-                <div className="min-h-screen bg-gray-50">
-                    <header className="bg-white border-b border-gray-100 px-8 py-5 shadow-sm flex items-center justify-between">
-                        <div>
-                            <h1 className="text-2xl font-extrabold text-blue-900">💡 쇼특허 (Short-Cut) AI</h1>
-                            <p className="text-gray-500 text-sm font-medium mt-0.5">아이디어만 입력하면 AI가 실시간으로 특허 침해 여부를 분석해 드립니다.</p>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <span className="text-sm text-gray-600 font-medium">👤 {user.nickname}</span>
-                            <button
-                                type="button"
-                                onClick={logout}
-                                className="text-xs text-red-500 hover:text-red-700 hover:underline transition-colors font-medium"
-                            >
-                                로그아웃
-                            </button>
-                        </div>
-                    </header>
+        <AuthGuard
+            user={user}
+            authView={authView}
+            setAuthView={setAuthView}
+            isAuthLoading={isAuthLoading}
+            login={login}
+            signup={signup}
+            fetchMe={fetchMe}
+        >
+            <div className="min-h-screen bg-gray-50">
+                <header className="bg-white border-b border-gray-100 px-8 py-5 shadow-sm flex items-center justify-between">
+                    <div>
+                        <h1 className="text-2xl font-extrabold text-blue-900">💡 쇼특허 (Short-Cut) AI</h1>
+                        <p className="text-gray-500 text-sm font-medium mt-0.5">아이디어만 입력하면 AI가 실시간으로 특허 침해 여부를 분석해 드립니다.</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <span className="text-sm text-gray-600 font-medium">👤 {user?.email}</span>
+                        <button
+                            type="button"
+                            onClick={logout}
+                            className="text-xs text-red-500 hover:text-red-700 hover:underline transition-colors font-medium"
+                        >
+                            로그아웃
+                        </button>
+                    </div>
+                </header>
 
-                    <TimeoutToast isAnalyzing={isAnalyzing} timeoutMs={30000} />
-                    <SessionExpiredToast />
-                    <AuthErrorToast />
-                    <GlobalLoading isAnalyzing={isAnalyzing} message={message} onCancel={cancelAnalysis} />
+                <TimeoutToast isAnalyzing={isAnalyzing} timeoutMs={30000} />
+                <SessionExpiredToast />
+                <AuthErrorToast />
+                <GlobalLoading isAnalyzing={isAnalyzing} message={message} onCancel={cancelAnalysis} />
 
-                    <main className="flex flex-col md:flex-row gap-6 p-6 max-w-7xl mx-auto">
-                        <HistorySidebar
-                            onSelectIdea={handleSelectHistory}
-                            isAnalyzing={isAnalyzing}
-                            refreshTrigger={refreshCount}
-                        />
+                <main className="flex flex-col md:flex-row gap-6 p-6 max-w-7xl mx-auto">
+                    <HistorySidebar
+                        onSelectIdea={handleSelectHistory}
+                        isAnalyzing={isAnalyzing}
+                        refreshTrigger={refreshCount}
+                    />
 
-                        <section className="flex-1 flex flex-col gap-6">
-                            {errorInfo ? (
-                                <ErrorFallback
-                                    title={errorInfo.title}
-                                    message={errorInfo.message}
-                                    errorType={errorInfo.errorType}
-                                    onRetry={() => {
-                                        handleReset();
-                                        setErrorInfo(null);
-                                    }}
+                    <section className="flex-1 flex flex-col gap-6">
+                        {errorInfo ? (
+                            <ErrorFallback
+                                title={errorInfo.title}
+                                message={errorInfo.message}
+                                errorType={errorInfo.errorType}
+                                onRetry={() => {
+                                    handleReset();
+                                    setErrorInfo(null);
+                                }}
+                            />
+                        ) : isComplete && resultData ? (
+                            <ResultView
+                                idea={idea}
+                                resultData={resultData}
+                                onReset={handleReset}
+                            />
+                        ) : (
+                            <div className="w-full">
+                                <IpcFilterSelector
+                                    selectedFilters={ipcFilters}
+                                    onChange={setIpcFilters}
+                                    disabled={isAnalyzing}
                                 />
-                            ) : isComplete && resultData ? (
-                                <ResultView
-                                    idea={idea}
-                                    resultData={resultData}
-                                    onReset={handleReset}
+                                <IdeaInput
+                                    onSubmit={handleSubmitIdea}
+                                    disabled={isAnalyzing}
+                                    initialValue={historyIdea}
                                 />
-                            ) : (
-                                <div className="w-full">
-                                    <IpcFilterSelector
-                                        selectedFilters={ipcFilters}
-                                        onChange={setIpcFilters}
-                                        disabled={isAnalyzing}
-                                    />
-                                    <IdeaInput
-                                        onSubmit={handleSubmitIdea}
-                                        disabled={isAnalyzing}
-                                        initialValue={historyIdea}
-                                    />
 
-                                </div>
-                            )}
-                        </section>
-                    </main>
-                </div>
-            )}
+                            </div>
+                        )}
+                    </section>
+                </main>
+            </div>
         </AuthGuard>
     );
 }
