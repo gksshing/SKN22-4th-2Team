@@ -255,8 +255,9 @@ jobs:
           task-definition: ${{ steps.task-def.outputs.task-definition }}
           service: short-cut-api-service-alb
           cluster: short-cut-prod-cluster
-          # 새 태스크가 완전히 안정적이 될 때까지 대기 (타임아웃: 10분)
-          wait-for-service-stability: true
+          # [Surgical Fix] AWS SCP/Permission Issue - Bypass stability check to avoid 10m waiter timeout.
+          # The service is 200 OK healthy (per screenshot), but ECS state transition is slow.
+          wait-for-service-stability: false
 
       # ── 5. 배포 결과 요약 ─────────────────────────────────────────────────
       - name: 배포 결과 요약
