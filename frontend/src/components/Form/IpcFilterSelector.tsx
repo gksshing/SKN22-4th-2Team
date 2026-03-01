@@ -1,4 +1,4 @@
-import { useState } from 'react';
+
 
 // IPC 카테고리 주요 목록 (국제특허분류 주요 섹션)
 const IPC_OPTIONS = [

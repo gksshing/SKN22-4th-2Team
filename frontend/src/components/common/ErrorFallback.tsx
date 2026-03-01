@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+
 
 // errorType: 에러 종류를 한국어 문자열 매칭 대신 타입 기반으로 판별 (Info 항목 반영)
 export type ErrorType =
