@@ -18,7 +18,11 @@ export function useRagStream() {
     // 진행중인 fetch 요청을 취소하기 위한 AbortController
     const abortControllerRef = useRef<AbortController | null>(null);
 
-    const startAnalysis = useCallback(async (idea: string) => {
+    const startAnalysis = useCallback(async (
+        userIdea: string,
+        ipcFilters: string[] | null = null,
+        useHybrid: boolean = true
+    ) => {
         setIsAnalyzing(true);
         setIsSkeletonVisible(true);
         setIsComplete(false);
@@ -47,13 +51,22 @@ export function useRagStream() {
             // 백엔드 FastAPI SSE 엔드포인트 호출 (POST)
             // 시니어 리뷰 반영: VITE_API_URL 환경변수 사용
             const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-            const response = await fetch(`${apiUrl}/api/analyze`, {
+            // 백엔드 AnalyzeRequest 스키마 필드명에 맞춰 요청 Body 구성
+            const reqBody = {
+                user_idea: userIdea,
+                user_id: window.ENV?.USER_ID || 'test_user_webapp', // TODO: JWT 인증으로 교체 예정
+                use_hybrid: useHybrid,
+                ipc_filters: ipcFilters && ipcFilters.length > 0 ? ipcFilters : null,
+                stream: true,
+            };
+            // API 버전 prefix: /api/v1/analyze (app.js 기준으로 통일)
+            const response = await fetch(`${apiUrl}/api/v1/analyze`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'text/event-stream',
                 },
-                body: JSON.stringify({ idea }),
+                body: JSON.stringify(reqBody),
                 signal: abortController.signal
             });
 
