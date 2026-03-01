@@ -173,8 +173,6 @@ def create_app() -> FastAPI:
             return FileResponse(index_file)
         return {"message": "Frontend index.html not found", "error": "ConfigurationError"}
 
-    app.mount("/", StaticFiles(directory=frontend_dir), name="frontend")
-
     @app.get("/health")
     async def health_check():
         return {
@@ -182,6 +180,8 @@ def create_app() -> FastAPI:
             "build_commit": os.getenv("GIT_COMMIT", "unknown"),
             "build_branch": os.getenv("GIT_BRANCH", "unknown"),
         }
+
+    app.mount("/", StaticFiles(directory=frontend_dir), name="frontend")
 
     return app
 
