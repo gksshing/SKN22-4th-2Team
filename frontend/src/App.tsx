@@ -8,6 +8,10 @@ import { ResultView } from './components/Result/ResultView';
 import { ErrorFallback } from './components/common/ErrorFallback';
 import { HistorySidebar } from './components/History/HistorySidebar';
 import { useRagStream } from './hooks/useRagStream';
+// Issue #46: Auth 컴포넌트 (Backend /auth/me 개통 후 조건부 라우팅 활성화)
+import { useAuth } from './hooks/useAuth';
+import { LoginForm } from './components/Auth/LoginForm';
+import { SignupForm } from './components/Auth/SignupForm';
 
 function App() {
     const [idea, setIdea] = useState('');
@@ -17,6 +21,30 @@ function App() {
     const [historyIdea, setHistoryIdea] = useState<string | undefined>(undefined);
     /** 히스토리 자동 갱신 카운터: isComplete 전환마다 증가 */
     const [refreshCount, setRefreshCount] = useState(0);
+
+    // ========== Issue #46: Auth 상태 관리 ==========
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { user, isLoading: isAuthLoading, login, signup, sessionExpiredMsg, clearSessionExpiredMsg } = useAuth();
+    /** 로그인 / 회원가입 화면 전환 상태 */
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [authView, setAuthView] = useState<'login' | 'signup'>('login');
+
+    // 세션 만료 메시지 처리
+    useEffect(() => {
+        if (sessionExpiredMsg) {
+            console.warn('[Auth] 세션 만료:', sessionExpiredMsg);
+            clearSessionExpiredMsg();
+        }
+    }, [sessionExpiredMsg, clearSessionExpiredMsg]);
+
+    // TODO: Backend /api/v1/auth/me 개통 후 아래 주석 해제 → 로그인 라우팅 활성화
+    // if (!user) {
+    //     if (authView === 'signup') {
+    //         return <SignupForm onSuccess={() => setAuthView('login')} onNavigateToLogin={() => setAuthView('login')} onSignup={signup} isLoading={isAuthLoading} />;
+    //     }
+    //     return <LoginForm onSuccess={() => {}} onNavigateToSignup={() => setAuthView('signup')} onLogin={login} isLoading={isAuthLoading} />;
+    // }
+    // ================================================
 
     // RAG 분석 상태 관리 훅
     const {
