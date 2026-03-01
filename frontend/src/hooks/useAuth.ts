@@ -81,7 +81,7 @@ export function useAuth(): UseAuthReturn {
     }: { email: string; password: string; nickname: string }) => {
         setIsLoading(true);
         try {
-            await apiClient.post('/api/v1/auth/signup', { email, password, nickname });
+            await apiClient.post('/api/v1/auth/register', { email, password, nickname });
         } catch (err) {
             throw new Error(err instanceof Error ? err.message : '회원가입에 실패했습니다. 잠시 후 다시 시도해주세요.');
         } finally {
