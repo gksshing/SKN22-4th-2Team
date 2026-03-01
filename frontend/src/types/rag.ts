@@ -13,6 +13,16 @@ export interface RagAnalysisResult {
     topPatents: PatentContext[]; // 상위 유사 특허 리스트
 }
 
+export interface HistoryRecord {
+    id: string; // db id
+    sessionId?: string;
+    idea: string;
+    riskLevel: 'Low' | 'Medium' | 'High';
+    riskScore: number;
+    similarCount: number;
+    createdAt: string; // ISO string
+}
+
 export interface RagStreamState {
     isAnalyzing: boolean;
     isSkeletonVisible: boolean;

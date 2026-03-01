@@ -56,14 +56,14 @@ function App() {
     // 폼 제출: 아이디어 텍스트를 상태에 저장하고 RAG 분석 시작
     const handleSubmitIdea = (inputIdea: string) => {
         setIdea(inputIdea);
-        startAnalysis(inputIdea, true, ipcFilters.length > 0 ? ipcFilters : null);
+        startAnalysis(inputIdea, ipcFilters.length > 0 ? ipcFilters : null, true);
     };
 
     // Critical 수정: 히스토리 원클릭 → IdeaInput 값 동기화 + startAnalysis() 직접 호출
     const handleSelectHistory = (selectedIdea: string) => {
         setIdea(selectedIdea);
         setHistoryIdea(selectedIdea); // IdeaInput useEffect가 감지해 textarea 동기화
-        startAnalysis(selectedIdea, true, ipcFilters.length > 0 ? ipcFilters : null);
+        startAnalysis(selectedIdea, ipcFilters.length > 0 ? ipcFilters : null, true);
     };
 
     const handleReset = () => {
