@@ -12,6 +12,9 @@ import { useRagStream } from './hooks/useRagStream';
 import { useAuth } from './hooks/useAuth';
 import { LoginForm } from './components/Auth/LoginForm';
 import { SignupForm } from './components/Auth/SignupForm';
+// Issue #47: 세션 만료 전역 토스트 (auth:session-expired 이벤트 수신)
+import { SessionExpiredToast } from './components/Auth/SessionExpiredToast';
+
 
 function App() {
     const [idea, setIdea] = useState('');
@@ -97,6 +100,10 @@ function App() {
 
             {/* 통신 지연 안내 토스트 (30초 초과 시 표출) */}
             <TimeoutToast isAnalyzing={isAnalyzing} timeoutMs={30000} />
+
+            {/* Issue #47: 세션 만료 토스트 — 전역 마운트 (auth:session-expired 이벤트 수신 시 노출) */}
+            <SessionExpiredToast />
+
 
             {/* 메인 2단 레이아웃: 좌측 히스토리 사이드바 + 우측 메인 콘텐츠 */}
             <main className="flex flex-col md:flex-row gap-6 p-6 max-w-7xl mx-auto">
