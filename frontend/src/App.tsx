@@ -25,9 +25,9 @@ function App() {
     /** 히스토리 자동 갱신 카운터: isComplete 전환마다 증가 */
     const [refreshCount, setRefreshCount] = useState(0);
 
-    // ========== Issue #46: Auth 상태 관리 ==========
+    // ========== Issue #46/#48: Auth 상태 관리 ==========
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { user, isLoading: isAuthLoading, login, signup, sessionExpiredMsg, clearSessionExpiredMsg } = useAuth();
+    const { user, isLoading: isAuthLoading, login, signup, logout, fetchMe, sessionExpiredMsg, clearSessionExpiredMsg } = useAuth();
     /** 로그인 / 회원가입 화면 전환 상태 */
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [authView, setAuthView] = useState<'login' | 'signup'>('login');
@@ -39,6 +39,10 @@ function App() {
             clearSessionExpiredMsg();
         }
     }, [sessionExpiredMsg, clearSessionExpiredMsg]);
+
+    // Issue #48: 앱 마운트 시 세션 자동 복원 (HttpOnly 쿠키 기반)
+    // TODO: Backend /api/v1/auth/me 개통 후 아래 주석 해제
+    // useEffect(() => { fetchMe(); }, [fetchMe]);
 
     // TODO: Backend /api/v1/auth/me 개통 후 아래 주석 해제 → 로그인 라우팅 활성화
     // if (!user) {
@@ -93,9 +97,24 @@ function App() {
     return (
         <div className="min-h-screen bg-gray-50">
             {/* 페이지 헤더 */}
-            <header className="bg-white border-b border-gray-100 px-8 py-5 shadow-sm">
-                <h1 className="text-2xl font-extrabold text-blue-900">💡 쇼특허 (Short-Cut) AI</h1>
-                <p className="text-gray-500 text-sm font-medium mt-0.5">아이디어만 입력하면 AI가 실시간으로 특허 침해 여부를 분석해 드립니다.</p>
+            <header className="bg-white border-b border-gray-100 px-8 py-5 shadow-sm flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-extrabold text-blue-900">💡 쇼특허 (Short-Cut) AI</h1>
+                    <p className="text-gray-500 text-sm font-medium mt-0.5">아이디어만 입력하면 AI가 실시간으로 특허 침해 여부를 분석해 드립니다.</p>
+                </div>
+                {/* Issue #48: 로그인 사용자 정보 표시 (Backend /auth/me 개통 후 실제 표시) */}
+                {user && (
+                    <div className="flex items-center gap-4">
+                        <span className="text-sm text-gray-600 font-medium">👤 {user.nickname}</span>
+                        <button
+                            type="button"
+                            onClick={logout}
+                            className="text-xs text-red-500 hover:text-red-700 hover:underline transition-colors font-medium"
+                        >
+                            로그아웃
+                        </button>
+                    </div>
+                )}
             </header>
 
             {/* 통신 지연 안내 토스트 (30초 초과 시 표출) */}
