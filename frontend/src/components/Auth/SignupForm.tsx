@@ -15,7 +15,6 @@ import {
     validateEmail,
     validatePassword,
     validateConfirmPassword,
-    validateNickname,
 } from '../../utils/validators';
 import { PasswordToggleInput } from './PasswordToggleInput';
 import { PasswordStrengthBar } from './PasswordStrengthBar';
@@ -23,7 +22,7 @@ import { PasswordStrengthBar } from './PasswordStrengthBar';
 interface SignupFormProps {
     onSuccess: () => void;
     onNavigateToLogin: () => void;
-    onSignup: (params: { email: string; password: string; nickname: string }) => Promise<void>;
+    onSignup: (params: { email: string; password: string }) => Promise<void>;
     isLoading?: boolean;
 }
 
@@ -31,7 +30,6 @@ interface FormErrors {
     email?: string;
     password?: string;
     confirmPassword?: string;
-    nickname?: string;
     terms?: string;
     submit?: string;
 }
@@ -40,7 +38,6 @@ export function SignupForm({ onSuccess, onNavigateToLogin, onSignup, isLoading }
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [nickname, setNickname] = useState('');
     const [termsAgreed, setTermsAgreed] = useState(false);
     const [errors, setErrors] = useState<FormErrors>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -52,27 +49,22 @@ export function SignupForm({ onSuccess, onNavigateToLogin, onSignup, isLoading }
 
     const handleEmailBlur = useCallback(() => {
         const r = validateEmail(email);
-        setErrors((p) => ({ ...p, email: r === true ? undefined : r }));
+        setErrors((p: FormErrors) => ({ ...p, email: r === true ? undefined : r }));
     }, [email]);
 
     const handlePasswordBlur = useCallback(() => {
         const r = validatePassword(password);
-        setErrors((p) => ({ ...p, password: r === true ? undefined : r }));
+        setErrors((p: FormErrors) => ({ ...p, password: r === true ? undefined : r }));
         if (confirmPassword) {
             const cr = validateConfirmPassword(confirmPassword, password);
-            setErrors((p) => ({ ...p, confirmPassword: cr === true ? undefined : cr }));
+            setErrors((p: FormErrors) => ({ ...p, confirmPassword: cr === true ? undefined : cr }));
         }
     }, [password, confirmPassword]);
 
     const handleConfirmPasswordBlur = useCallback(() => {
         const r = validateConfirmPassword(confirmPassword, password);
-        setErrors((p) => ({ ...p, confirmPassword: r === true ? undefined : r }));
+        setErrors((p: FormErrors) => ({ ...p, confirmPassword: r === true ? undefined : r }));
     }, [confirmPassword, password]);
-
-    const handleNicknameBlur = useCallback(() => {
-        const r = validateNickname(nickname);
-        setErrors((p) => ({ ...p, nickname: r === true ? undefined : r }));
-    }, [nickname]);
 
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -80,13 +72,11 @@ export function SignupForm({ onSuccess, onNavigateToLogin, onSignup, isLoading }
         const emailR = validateEmail(email);
         const passwordR = validatePassword(password);
         const confirmR = validateConfirmPassword(confirmPassword, password);
-        const nicknameR = validateNickname(nickname);
 
         const newErrors: FormErrors = {
             email: emailR === true ? undefined : emailR,
             password: passwordR === true ? undefined : passwordR,
             confirmPassword: confirmR === true ? undefined : confirmR,
-            nickname: nicknameR === true ? undefined : nicknameR,
             terms: termsAgreed ? undefined : '약관에 동의해주세요.',
         };
 
@@ -98,7 +88,7 @@ export function SignupForm({ onSuccess, onNavigateToLogin, onSignup, isLoading }
         setIsSubmitting(true);
         setErrors({});
         try {
-            await onSignup({ email, password, nickname });
+            await onSignup({ email, password });
             // 회원가입 성공 → 성공 메시지 1.5초 표시 후 로그인 이동
             setIsSuccess(true);
             setTimeout(() => {
@@ -146,7 +136,6 @@ export function SignupForm({ onSuccess, onNavigateToLogin, onSignup, isLoading }
                     <h2 className="text-2xl font-bold text-gray-800 mb-6">회원가입</h2>
 
                     <form onSubmit={handleSubmit} noValidate className="space-y-4">
-
                         {/* 1. 이메일 */}
                         <div>
                             <label htmlFor="signup-email" className={fieldClass(!!errors.email)}>이메일</label>
@@ -164,7 +153,7 @@ export function SignupForm({ onSuccess, onNavigateToLogin, onSignup, isLoading }
                             {errors.email && <p role="alert" className="mt-1 text-xs text-red-500 flex items-center gap-1">⚠️ {errors.email}</p>}
                         </div>
 
-                        {/* 2. 비밀번호 (PasswordToggleInput + PasswordStrengthBar) */}
+                        {/* 2. 비밀번호 */}
                         <div>
                             <label htmlFor="signup-password" className={fieldClass(!!errors.password)}>비밀번호</label>
                             <PasswordToggleInput
@@ -177,12 +166,11 @@ export function SignupForm({ onSuccess, onNavigateToLogin, onSignup, isLoading }
                                 placeholder="8자 이상, 영문·숫자·특수문자 포함"
                                 hasError={!!errors.password}
                             />
-                            {/* 비밀번호 복잡도 강도 바 */}
                             <PasswordStrengthBar password={password} />
                             {errors.password && <p role="alert" className="mt-1 text-xs text-red-500 flex items-center gap-1">⚠️ {errors.password}</p>}
                         </div>
 
-                        {/* 3. 비밀번호 확인 (실시간 ✅/❌ 아이콘) */}
+                        {/* 3. 비밀번호 확인 */}
                         <div>
                             <label htmlFor="signup-confirm" className={fieldClass(!!errors.confirmPassword)}>비밀번호 확인</label>
                             <div className="relative">
@@ -196,7 +184,6 @@ export function SignupForm({ onSuccess, onNavigateToLogin, onSignup, isLoading }
                                     placeholder="비밀번호를 다시 입력하세요"
                                     hasError={!!errors.confirmPassword || isConfirmMismatch}
                                 />
-                                {/* 실시간 일치 아이콘 */}
                                 {isConfirmMatch && (
                                     <span className="absolute right-10 top-1/2 -translate-y-1/2 text-green-500 text-sm font-bold">✅</span>
                                 )}
@@ -207,30 +194,13 @@ export function SignupForm({ onSuccess, onNavigateToLogin, onSignup, isLoading }
                             {errors.confirmPassword && <p role="alert" className="mt-1 text-xs text-red-500 flex items-center gap-1">⚠️ {errors.confirmPassword}</p>}
                         </div>
 
-                        {/* 4. 닉네임 */}
-                        <div>
-                            <label htmlFor="signup-nickname" className={fieldClass(!!errors.nickname)}>닉네임</label>
-                            <input
-                                id="signup-nickname" type="text" autoComplete="username"
-                                value={nickname}
-                                onChange={(e: ChangeEvent<HTMLInputElement>) => setNickname(e.target.value)}
-                                onBlur={handleNicknameBlur}
-                                disabled={isDisabled}
-                                placeholder="2~20자, 특수문자 제외"
-                                className={`w-full px-4 py-3 rounded-xl border-2 text-gray-800 placeholder-gray-400 focus:outline-none transition-colors
-                                    ${errors.nickname ? 'border-red-400 bg-red-50 focus:border-red-500' : 'border-gray-200 bg-gray-50 focus:border-blue-500 focus:bg-white'}
-                                    disabled:opacity-50 disabled:cursor-not-allowed`}
-                            />
-                            {errors.nickname && <p role="alert" className="mt-1 text-xs text-red-500 flex items-center gap-1">⚠️ {errors.nickname}</p>}
-                        </div>
-
-                        {/* 약관 동의 체크박스 */}
+                        {/* 약관 동의 */}
                         <div className="pt-1">
                             <label className="flex items-start gap-3 cursor-pointer group">
                                 <input
                                     type="checkbox"
                                     checked={termsAgreed}
-                                    onChange={(e) => setTermsAgreed(e.target.checked)}
+                                    onChange={(e: ChangeEvent<HTMLInputElement>) => setTermsAgreed(e.target.checked)}
                                     disabled={isDisabled}
                                     className="mt-0.5 w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                                 />
@@ -255,9 +225,9 @@ export function SignupForm({ onSuccess, onNavigateToLogin, onSignup, isLoading }
                             type="submit"
                             disabled={isDisabled || !termsAgreed}
                             className="w-full py-3.5 bg-blue-600 text-white font-bold rounded-xl
-                                hover:bg-blue-700 active:scale-95 transition-all mt-2
-                                disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100
-                                flex items-center justify-center gap-2"
+                                        hover:bg-blue-700 active:scale-95 transition-all mt-2
+                                        disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100
+                                        flex items-center justify-center gap-2"
                         >
                             {isSubmitting ? <><span className="animate-spin">⏳</span>가입 중...</> : '회원가입'}
                         </button>

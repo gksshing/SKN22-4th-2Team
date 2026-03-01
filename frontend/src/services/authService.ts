@@ -1,5 +1,5 @@
 import apiClient from '../utils/apiClient';
-import { LoginParams, SignupParams, UserResponse } from '../types/auth';
+import { LoginParams, SignupParams, UserResponse, LoginResponse } from '../types/auth';
 
 /**
  * 전역 인증 서비스
@@ -10,7 +10,7 @@ export const authService = {
      * 로그인 요청
      * 성공 시 백엔드에서 Set-Cookie 헤더를 통해 JWT 발급
      */
-    async login(params: LoginParams): Promise<UserResponse> {
+    async login(params: LoginParams): Promise<LoginResponse> {
         const response = await apiClient.post('/api/v1/auth/login', params);
         return response.data;
     },

@@ -13,6 +13,17 @@ interface UseAuthReturn {
     fetchMe: () => Promise<void>;
 }
 
+/** FastAPI 에러 응답(detail)에서 메시지 추출 */
+function extractErrorMessage(error: any, fallback: string): string {
+    const detail = error.response?.data?.detail;
+    if (typeof detail === 'string') return detail;
+    if (Array.isArray(detail) && detail.length > 0) {
+        // Pydantic/FastAPI validation error: [{msg: '...', ...}]
+        return detail[0].msg || detail[0].message || fallback;
+    }
+    return fallback;
+}
+
 export function useAuth(): UseAuthReturn {
     const [user, setUser] = useState<UserResponse | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -36,10 +47,10 @@ export function useAuth(): UseAuthReturn {
         setIsLoading(true);
         try {
             const data = await authService.login(params);
-            setUser(data.user || data);
+            setUser(data.user);
         } catch (error: any) {
             console.error('Login failed:', error);
-            const message = error.response?.data?.detail || '아이디 또는 비밀번호를 확인해주세요.';
+            const message = extractErrorMessage(error, '아이디 또는 비밀번호를 확인해주세요.');
             window.dispatchEvent(new CustomEvent('auth:error', { detail: { message } }));
             throw new Error(message);
         } finally {
@@ -60,10 +71,15 @@ export function useAuth(): UseAuthReturn {
     const signup = useCallback(async (params: SignupParams) => {
         setIsLoading(true);
         try {
-
+            await authService.signup(params);
+        } catch (error: any) {
+            console.error('Signup failed:', error);
+            const message = extractErrorMessage(error, '회원가입에 실패했습니다. 다시 시도해주세요.');
+            window.dispatchEvent(new CustomEvent('auth:error', { detail: { message } }));
+            throw new Error(message);
         } finally {
             setIsLoading(false);
-      }
+        }
     }, []);
 
     const fetchMe = useCallback(async () => {

@@ -3,15 +3,19 @@ export interface LoginParams {
     password?: string;
 }
 
-export interface SignupParams {
-    email: string;
-    password: string;
-    nickname: string;
-}
-
 export interface UserResponse {
     email: string;
-    nickname: string;
+}
+
+export interface LoginResponse {
+    status: string;
+    message: string;
+    user: UserResponse;
+}
+
+export interface SignupParams {
+    email: string;
+    password?: string;
 }
 
 export interface AuthState {

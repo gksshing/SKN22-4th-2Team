@@ -56,9 +56,9 @@ export function LoginForm({ onSuccess, onNavigateToSignup, onLogin, isLoading }:
         try {
             await onLogin({ email, password });
             onSuccess();
-        } catch {
-            // 계정 열거 공격 방어: 실패 원인 노출 없이 단일 메시지
-            setErrors({ submit: '아이디 또는 비밀번호를 확인해주세요.' });
+        } catch (error: any) {
+            // Toast와 정렬: 백엔드 메시지 또는 기본 메시지
+            setErrors({ submit: error.message || '아이디 또는 비밀번호를 확인해주세요.' });
         } finally {
             setIsSubmitting(false);
         }
