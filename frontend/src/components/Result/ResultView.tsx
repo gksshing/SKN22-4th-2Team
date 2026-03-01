@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { downloadPdfFromElement } from '../../utils/exportPdf';
 import { PatentContext, RagAnalysisResult } from '../../types/rag';
+import { SimilarityBarChart } from './SimilarityBarChart';
 
 interface ResultViewProps {
     idea: string;
@@ -30,7 +31,12 @@ function PatentCard({ patent }: { patent: PatentContext }) {
                     <div className="flex items-center gap-3 mb-2">
                         <span className="font-extrabold text-blue-900 text-lg">{patent.id}</span>
                         <a
-                            href={`http://kpat.kipris.or.kr/kpat/searchLogina.do?next=MainSearch#page1`} // 임시 KIPRIS 연동 URL
+                            href={
+                                // Warning 반영: applno 필드 존재 시 특허 직접 링크, 없으면 범용 검색 URL
+                                (patent as PatentContext & { applno?: string }).applno
+                                    ? `http://kpat.kipris.or.kr/kpat/biblioa.do?applno=${(patent as PatentContext & { applno?: string }).applno}`
+                                    : `http://kpat.kipris.or.kr/kpat/searchLogina.do?next=MainSearch#page1`
+                            }
                             target="_blank"
                             rel="noreferrer"
                             className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 font-bold transition-colors shadow-sm flex items-center gap-1"
@@ -143,6 +149,11 @@ export function ResultView({ idea, resultData, onReset }: ResultViewProps) {
                         </div>
                     )}
                 </div>
+
+                {/* Warning 반영: CSS 기반 유사도 바 차트 (특허 목록 아래 배치, recharts 미사용) */}
+                {resultData.topPatents.length > 0 && (
+                    <SimilarityBarChart patents={resultData.topPatents} />
+                )}
 
                 {/* 액션 버튼 그룹 (캡쳐가 진행될 땐 숨김) */}
                 {!isExporting && (

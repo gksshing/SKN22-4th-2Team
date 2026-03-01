@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ProgressStepper } from './components/Loading/ProgressStepper';
 import { RagSkeleton } from './components/Loading/RagSkeleton';
 import { TimeoutToast } from './components/Loading/TimeoutToast';
 import { IdeaInput } from './components/Form/IdeaInput';
+import { IpcFilterSelector } from './components/Form/IpcFilterSelector';
 import { ResultView } from './components/Result/ResultView';
 import { ErrorFallback } from './components/common/ErrorFallback';
 import { HistorySidebar } from './components/History/HistorySidebar';
@@ -10,6 +11,12 @@ import { useRagStream } from './hooks/useRagStream';
 
 function App() {
     const [idea, setIdea] = useState('');
+    /** IPC 카테고리 필터: IpcFilterSelector에서 선택한 코드 배열 */
+    const [ipcFilters, setIpcFilters] = useState<string[]>([]);
+    /** 히스토리 원클릭 시 IdeaInput에 주입할 값 (Critical 수정: 별도 state로 관리) */
+    const [historyIdea, setHistoryIdea] = useState<string | undefined>(undefined);
+    /** 히스토리 자동 갱신 카운터: isComplete 전환마다 증가 */
+    const [refreshCount, setRefreshCount] = useState(0);
 
     // RAG 분석 상태 관리 훅
     const {
@@ -29,18 +36,28 @@ function App() {
     // 폼 제출: 아이디어 텍스트를 상태에 저장하고 RAG 분석 시작
     const handleSubmitIdea = (inputIdea: string) => {
         setIdea(inputIdea);
-        startAnalysis(inputIdea);
+        startAnalysis(inputIdea, true, ipcFilters.length > 0 ? ipcFilters : null);
     };
 
-    // 히스토리 항목 클릭: 해당 아이디어를 입력창에 채우기 위해 상위 상태 업데이트
+    // Critical 수정: 히스토리 원클릭 → IdeaInput 값 동기화 + startAnalysis() 직접 호출
     const handleSelectHistory = (selectedIdea: string) => {
         setIdea(selectedIdea);
+        setHistoryIdea(selectedIdea); // IdeaInput useEffect가 감지해 textarea 동기화
+        startAnalysis(selectedIdea, true, ipcFilters.length > 0 ? ipcFilters : null);
     };
 
     const handleReset = () => {
         setIdea('');
+        setHistoryIdea('');
         setIsComplete(false);
     };
+
+    // Info: 분석 완료 시 refreshCount 증가 → HistorySidebar 자동 갱신
+    useEffect(() => {
+        if (isComplete) {
+            setRefreshCount((c) => c + 1);
+        }
+    }, [isComplete]);
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -60,6 +77,7 @@ function App() {
                 <HistorySidebar
                     onSelectIdea={handleSelectHistory}
                     isAnalyzing={isAnalyzing}
+                    refreshTrigger={refreshCount}
                 />
 
                 {/* 우측: 메인 콘텐츠 영역 */}
@@ -70,6 +88,7 @@ function App() {
                         <ErrorFallback
                             title={errorInfo.title}
                             message={errorInfo.message}
+                            errorType={errorInfo.errorType}
                             onRetry={() => {
                                 handleReset();
                                 setErrorInfo(null);
@@ -85,9 +104,16 @@ function App() {
                     ) : (
                         /* 입력 및 로딩 화면 */
                         <div className="w-full">
+                            {/* IPC 카테고리 필터 (Info: ipcFilters 활성화) */}
+                            <IpcFilterSelector
+                                selectedFilters={ipcFilters}
+                                onChange={setIpcFilters}
+                                disabled={isAnalyzing}
+                            />
                             <IdeaInput
                                 onSubmit={handleSubmitIdea}
                                 disabled={isAnalyzing}
+                                initialValue={historyIdea}
                             />
 
                             {/* 분석 진행 중: 프로그레스 + 스켈레톤/스트리밍 UI */}

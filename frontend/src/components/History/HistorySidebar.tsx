@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { getSessionId } from '../../utils/session';
 
 // 히스토리 단일 항목 타입 (백엔드 반환값 기준: user_idea, timestamp)
 interface HistoryItem {
@@ -13,38 +14,51 @@ interface HistorySidebarProps {
     onSelectIdea: (idea: string) => void;
     /** 분석이 진행 중일 때 클릭을 비활성화하기 위한 플래그 */
     isAnalyzing: boolean;
+    /** 분석 완료 시 히스토리 목록 자동 갱신 트리거 (isComplete 카운터 전달) */
+    refreshTrigger?: number;
 }
 
-export function HistorySidebar({ onSelectIdea, isAnalyzing }: HistorySidebarProps) {
+// 컴포넌트 외부 상수: 매 렌더마다 재생성되지 않도록 하여 useCallback deps 문제 해소
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+export function HistorySidebar({ onSelectIdea, isAnalyzing, refreshTrigger }: HistorySidebarProps) {
+
     const [histories, setHistories] = useState<HistoryItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [fetchError, setFetchError] = useState<string | null>(null);
 
-    // TODO: 추후 JWT 인증 헤더 방식으로 교체 필요 (현재 테스트용 고정값)
-    const USER_ID = window.ENV?.USER_ID || 'test_user_webapp';
-    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
-    // 히스토리 데이터 조회 (Query Parameter 방식: /history?user_id=...)
+    // 히스토리 데이터 조회 (Query Parameter + X-Session-ID 헤더)
     const fetchHistory = useCallback(async () => {
         setIsLoading(true);
         setFetchError(null);
+        const sessionId = getSessionId();
         try {
-            const res = await fetch(`${API_BASE_URL}/api/v1/history?user_id=${USER_ID}`);
+            const res = await fetch(`${API_BASE_URL}/api/v1/history?user_id=${sessionId}`, {
+                headers: {
+                    'X-Session-ID': sessionId, // Issue #24: 세션 식별자 헤더
+                },
+            });
             if (!res.ok) throw new Error(`서버 응답 오류: ${res.status}`);
             const data = await res.json();
             setHistories(data.history || []);
         } catch (err) {
             console.error('[HistorySidebar] 히스토리 조회 실패:', err);
-            // 히스토리 조회 실패는 치명적이지 않으므로 빈 상태 유지 (UI 에러 표시만)
             setFetchError('히스토리를 불러오지 못했습니다.');
         } finally {
             setIsLoading(false);
         }
-    }, [API_BASE_URL, USER_ID]);
+    }, []); // API_BASE_URL이 컴포넌트 외부 상수이므로 deps 비우 가능
 
     useEffect(() => {
         fetchHistory();
     }, [fetchHistory]);
+
+    // Info: refreshTrigger 변경 시(=새 분석 완료 시) 히스토리 자동 갱신
+    useEffect(() => {
+        if (refreshTrigger && refreshTrigger > 0) {
+            fetchHistory();
+        }
+    }, [refreshTrigger, fetchHistory]);
 
     // 위험도 뱃지 색상 결정
     const getRiskBadgeStyle = (riskLevel?: string) => {
@@ -158,13 +172,4 @@ export function HistorySidebar({ onSelectIdea, isAnalyzing }: HistorySidebarProp
         </aside>
     );
 }
-
-// window.ENV 타입 전역 선언 (TypeScript 컴파일 오류 방지)
-declare global {
-    interface Window {
-        ENV?: {
-            API_BASE_URL?: string;
-            USER_ID?: string;
-        };
-    }
-}
+// window.ENV 전역 타입은 src/types/global.d.ts로 이동 완료 (중복 선언 제거)
