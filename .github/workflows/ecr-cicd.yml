@@ -182,8 +182,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=${{ github.workflow }}-${{ github.ref_name }}
-          cache-to: type=gha,mode=max,scope=${{ github.workflow }}-${{ github.ref_name }}
+          # GHA 캐시 제거: 소스 변경이 캐시에 의해 무시되는 문제 방지
+          # cache-from/cache-to 없이 매번 전체 레이어 재빌드
           build-args: |
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
             GIT_COMMIT=${{ github.sha }}
@@ -253,7 +253,7 @@ jobs:
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           task-definition: ${{ steps.task-def.outputs.task-definition }}
-          service: short-cut-api-service-d7flqqqv
+          service: short-cut-api-service-alb
           cluster: short-cut-prod-cluster
           # 새 태스크가 완전히 안정적이 될 때까지 대기 (타임아웃: 10분)
           wait-for-service-stability: true
@@ -264,5 +264,6 @@ jobs:
           echo "## 🚀 ECS Production 배포 완료" >> $GITHUB_STEP_SUMMARY
           echo "| 항목 | 값 |" >> $GITHUB_STEP_SUMMARY
           echo "| 클러스터 | \`short-cut-prod-cluster\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| 서비스 | \`short-cut-api-service-d7flqqqv\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| 서비스 | \`short-cut-api-service-alb\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| ALB URL | \`short-cut-alb-183482512.ap-northeast-2.elb.amazonaws.com\` |" >> $GITHUB_STEP_SUMMARY
           echo "| 배포 이미지 | \`${{ needs.build-and-push-production.outputs.image-tag }}\` |" >> $GITHUB_STEP_SUMMARY

@@ -5,43 +5,80 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
+logger = logging.getLogger(__name__)
+
 # 애플리케이션 모듈 임포트 전 가장 먼저 시크릿을 로드합니다.
 # AWS Secrets Manager가 값을 주입했다면 os.getenv를 통해 조회 가능합니다.
 from src.secrets_manager import bootstrap_secrets
 
-# 시크릿 부트스트랩
+# 시크릿 부트스트랩 (AWS Secrets Manager 또는 .env 로드)
 bootstrap_secrets()
 
-# 물리적인 .env 존재 여부와 무관하게 최종 주입된 환경 변수만 검사
-openai_key = os.getenv("OPENAI_API_KEY")
-if not openai_key:
-    # 이 경우에만 진짜 키 누락으로 판단하고 명확한 예외를 발생시킵니다.
-    raise ValueError("Critical: OPENAI_API_KEY environment variable is missing!")
+# ── 핵심 환경 변수 선행 검증 (Fast-Fail) ──────────────────────────────────
+# 앱 구동 전 필수 키가 누락되었다면 에러 로그를 남기지만, 컨테이너 헬스체크 통과를 위해 종료(sys.exit)하지는 않습니다.
+# PINECONE_ENVIRONMENT: Pinecone v3 Serverless에서는 불필요 (v2 레거시) — 체크에서 제외
+critical_env_vars = {
+    "OPENAI_API_KEY": "OpenAI API 키가 누락되었습니다.",
+    "PINECONE_API_KEY": "Pinecone API 키가 누락되었습니다.",
+}
 
-# 검증 통과 완료 시 config 로드
+missing_vars = []
+for var, msg in critical_env_vars.items():
+    if not os.getenv(var):
+        logger.critical(f"Missing critical environment variable: {var} ({msg})")
+        missing_vars.append(var)
+
+if missing_vars:
+    # Issue #33: 필수 환경 변수 누락 시 애플리케이션을 즉시 중단합니다 (Fast-fail).
+    # AWS Secrets Manager 또는 ECS Task Definition의 secrets 매핑이 정상적으로
+    # 구성되어 있다면 이 지점에 도달하지 않습니다.
+    raise ValueError(
+        f"애플리케이션 구동 불가: 필수 환경 변수가 누락되었습니다 → {', '.join(missing_vars)}. "
+        f"AWS Secrets Manager 또는 .env 설정을 확인하세요."
+    )
+
+# 검증 통과 완료 시 config 및 나머지 모듈 로드
 from src.config import config
 
 from contextlib import asynccontextmanager
 from src.api.v1.router import router as api_v1_router
+from src.api.v1.auth_router import router as auth_router
 from src.utils import configure_json_logging
 from src.api.middleware import SecurityMiddleware
 from src.security import PromptInjectionError
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
-logger = logging.getLogger(__name__)
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 트래픽 수신 전 의존성 사전 초기화 (Pre-warm)
+    """트래픽 수신 전 의존성 사전 초기화 (Pre-warm)"""
     from src.api.dependencies import get_patent_agent, get_history_manager
-    logger.info("Pre-warming dependencies for fast startup...")
+    
+    logger.info("Checking system readiness & pre-warming dependencies...")
+    
     try:
-        get_patent_agent()
+        # PatentAgent 초기화 시 내부적으로 config 검증 및 LLM 연결 테스트가 수행되길 기대합니다.
+        agent = get_patent_agent()
+        logger.info(f"PatentAgent initialized (Model: {config.llm.model_name})")
+        
         get_history_manager()
-        logger.info("Dependencies pre-warmed successfully.")
+        logger.info("HistoryManager initialized.")
+        
+        # NLTK 데이터 경로 확인 (Dockerfile ENV와 동기화 확인용)
+        import nltk
+        logger.info(f"NLTK Data Paths: {nltk.data.path}")
+        
+        logger.info("System health check: PASSED. Ready to receive traffic.")
     except Exception as e:
-        logger.critical(f"Failed to initialize dependencies during startup: {e}")
-        import sys
-        sys.exit(1)
+        logger.critical(f"FATAL: Dependency initialization failed during lifespan: {e}")
+        # 초기화 실패 시 컨테이너가 Unhealthy 상태로 남지 않고 일단 켜지게 둡니다 (ALB 200 OK 헬스체크용).
+        # 실제 API 요청 시 500 에러+상세메시지로 사용자에게 노출됩니다.
+    
     yield
     logger.info("Shutting down FastAPI application...")
 
@@ -57,6 +94,8 @@ def create_app() -> FastAPI:
         version="1.0.0",
         lifespan=lifespan,
     )
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
     # 3. 미들웨어 추가 (순서는 나중에 등록한 것이 먼저 실행됨)
     # CORS 도메인은 환경변수 또는 로컬호스트로 제한하여 보안 설정 원복 방지
@@ -106,27 +145,40 @@ def create_app() -> FastAPI:
         return JSONResponse(
             status_code=500,
             content={
-                "detail": "Internal Server Error",
+                "detail": f"Internal Server Error: {str(exc)}",
                 "request_id": req_id
             }
         )
 
     # 5. API Endpoints 라우터 통합
+    app.include_router(auth_router, prefix="/api/v1")
     app.include_router(api_v1_router, prefix="/api/v1", tags=["analyze"])
 
+    # 6. 프론트엔드 서빙 (Vanilla JS vs React dist 자동 감지)
+    # React 빌드 산출물(dist)이 있으면 우선 서빙하고, 없으면 기본 frontend 폴더를 서빙합니다.
     from fastapi.responses import FileResponse
     from fastapi.staticfiles import StaticFiles
+    
+    frontend_dir = "frontend/dist" if os.path.exists("frontend/dist") else "frontend"
+    index_file = os.path.join(frontend_dir, "index.html")
 
     @app.get("/")
     async def serve_index():
-        """Root 경로 접속 시 프론트엔드 index.html 반환 (ALB 헬스체크 200 OK 포함)"""
-        return FileResponse("frontend/index.html")
+        """Root 접속 시 프론트엔드 메인 페이지 반환 (ALB 헬스체크 200 OK)"""
+        if os.path.exists(index_file):
+            return FileResponse(index_file)
+        return {"message": "Frontend index.html not found", "error": "ConfigurationError"}
+
+    app.mount("/", StaticFiles(directory=frontend_dir), name="frontend")
 
     @app.get("/health")
     async def health_check():
-        return {"status": "ok"}
+        return {
+            "status": "ok",
+            "build_commit": os.getenv("GIT_COMMIT", "unknown"),
+            "build_branch": os.getenv("GIT_BRANCH", "unknown"),
+        }
 
-    # 프론트엔드 폴더(app.js 등 정적 리소스) 마운트 (API 라우트 뒤에 배치)
     app.mount("/", StaticFiles(directory="frontend"), name="frontend")
 
     return app

@@ -1,17 +1,13 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App.tsx'
 import { ErrorBoundary } from './components/common/ErrorBoundary';
-import App from './App';
+import './index.css'
 
-const rootElement = document.getElementById('root');
-if (!rootElement) {
-    throw new Error('루트 DOM 요소(#root)를 찾을 수 없습니다. index.html을 확인해 주세요.');
-}
-
-createRoot(rootElement).render(
-    <StrictMode>
+ReactDOM.createRoot(document.getElementById('root')!).render(
+    <React.StrictMode>
         <ErrorBoundary>
             <App />
         </ErrorBoundary>
-    </StrictMode>
-);
+    </React.StrictMode>,
+)

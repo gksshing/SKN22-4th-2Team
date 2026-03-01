@@ -1,186 +1,184 @@
-import { PatentContext } from '../../types/rag';
+import { useRef, useState } from 'react';
+import { downloadPdfFromElement } from '../../utils/exportPdf';
+import { PatentContext, RagAnalysisResult } from '../../types/rag';
+import { SimilarityBarChart } from './SimilarityBarChart';
 
-interface PatentCardProps {
-    patent: PatentContext;
-    rank: number;
+interface ResultViewProps {
+    idea: string;
+    resultData: RagAnalysisResult;
+    onReset: () => void;
 }
 
-/**
- * 유사도 점수에 따른 색상 코딩 시스템
- * 🔴 높음 (80%~), 🟡 중간 (50~79%), 🟢 낮음 (~49%)
- */
-function getRiskBadge(similarity: number): {
-    label: string;
-    className: string;
-    icon: string;
-} {
-    if (similarity >= 80) {
-        return { label: '높음', className: 'bg-red-100 text-red-700 border-red-200', icon: '🔴' };
-    } else if (similarity >= 50) {
-        return { label: '중간', className: 'bg-yellow-100 text-yellow-700 border-yellow-200', icon: '🟡' };
-    } else {
-        return { label: '낮음', className: 'bg-green-100 text-green-700 border-green-200', icon: '🟢' };
-    }
-}
+// 선행 특허 개별 카드 컴포넌트 (PatentContext 기반 타입 적용)
+function PatentCard({ patent }: { patent: PatentContext }) {
+    // 80% 이상: 위험,  50~79%: 경계, 49% 이하: 안전
+    const getSimColor = (sim: number) => {
+        if (sim >= 80) return 'bg-red-100 text-red-800 border-red-200';
+        if (sim >= 50) return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        return 'bg-green-100 text-green-800 border-green-200';
+    };
 
-/**
- * 특허 유사도 카드 컴포넌트
- * 특허 번호, 제목, 유사도 점수, 요약 정보를 시각화합니다.
- */
-function PatentCard({ patent, rank }: PatentCardProps) {
-    const badge = getRiskBadge(patent.similarity);
+    const getSimBadgeText = (sim: number) => {
+        if (sim >= 80) return `🔴 매우 유사 (${sim}%)`;
+        if (sim >= 50) return `🟡 부분 유사 (${sim}%)`;
+        return `🟢 충돌 낮음 (${sim}%)`;
+    };
 
     return (
-        <div className="p-5 border-2 border-gray-100 rounded-xl hover:border-blue-100 hover:shadow-md transition-all group break-inside-avoid">
-            <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-2">
-                    <span className="text-xs font-black text-gray-300">#{rank}</span>
-                    <span className="text-sm font-bold text-gray-700 font-mono">{patent.id}</span>
+        <li className="break-inside-avoid mb-6 p-6 border-2 border-gray-100 rounded-xl hover:shadow-lg hover:border-blue-100 transition-all bg-white relative">
+            <div className="flex flex-col sm:flex-row justify-between items-start mb-4 gap-3">
+                <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                        <span className="font-extrabold text-blue-900 text-lg">{patent.id}</span>
+                        <a
+                            href={
+                                // Warning 반영: applno 필드 존재 시 특허 직접 링크, 없으면 범용 검색 URL
+                                (patent as PatentContext & { applno?: string }).applno
+                                    ? `http://kpat.kipris.or.kr/kpat/biblioa.do?applno=${(patent as PatentContext & { applno?: string }).applno}`
+                                    : `http://kpat.kipris.or.kr/kpat/searchLogina.do?next=MainSearch#page1`
+                            }
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 font-bold transition-colors shadow-sm flex items-center gap-1"
+                            title="새 창에서 KIPRIS 특허 원문 보기"
+                        >
+                            <span>🔗</span> 원문 조회
+                        </a>
+                    </div>
+                    <h4 className="font-bold text-gray-800 text-base leading-snug">{patent.title}</h4>
                 </div>
-                <div className="flex items-center gap-2">
-                    {/* 유사도 뱃지 */}
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold border ${badge.className}`}>
-                        {badge.icon} {badge.label} · {patent.similarity}%
-                    </span>
+
+                <div className={`px-3 py-1.5 flex-shrink-0 text-sm font-black rounded-lg border shadow-sm ${getSimColor(patent.similarity)}`}>
+                    {getSimBadgeText(patent.similarity)}
                 </div>
             </div>
 
-            {/* 특허 제목 */}
-            <h4 className="text-base font-bold text-gray-800 mb-2 group-hover:text-blue-700 transition-colors line-clamp-2">
-                {patent.title}
-            </h4>
-
-            {/* 위험 사유 요약 */}
-            <p className="text-sm text-gray-500 leading-relaxed line-clamp-3 mb-3">
-                {patent.summary}
-            </p>
-
-            {/* KIPRIS 원문 링크 (Backend에서 patent.url 제공 시 동적 연결 예정) */}
-            <div className="pt-2 border-t border-gray-50">
-                <span className="text-xs text-gray-300 italic">
-                    📌 원문 링크: 백엔드에서 patent.url 필드 제공 시 연결 예정
-                </span>
+            <div className="bg-gray-50 border border-gray-100 rounded-lg p-4">
+                <p className="text-gray-600 text-sm leading-relaxed">
+                    {patent.summary}
+                </p>
+                {/* 13번 기획안 하이라이트 반영 영역 (향후 백엔드 데이터에 강조태그 포함 시 dangerouslySetInnerHTML 대응 가능) */}
             </div>
-        </div>
+        </li>
     );
 }
 
-interface ResultViewProps {
-    riskLevel: 'Low' | 'Medium' | 'High';
-    riskScore: number;
-    similarCount: number;
-    uniqueness: string;
-    topPatents: PatentContext[];
-    onReset: () => void;
-    onExportPdf?: () => void;
-}
+export function ResultView({ idea, resultData, onReset }: ResultViewProps) {
+    const reportRef = useRef<HTMLDivElement>(null);
+    const [isExporting, setIsExporting] = useState(false);
 
-const RISK_CONFIG = {
-    High: {
-        gradient: 'from-red-900 to-red-700',
-        badge: 'bg-red-500/30 text-red-100 border-red-400/30',
-        label: '🔴 높은 침해 위험',
-        desc: '기존 특허와 매우 유사합니다'
-    },
-    Medium: {
-        gradient: 'from-yellow-800 to-amber-700',
-        badge: 'bg-yellow-500/30 text-yellow-100 border-yellow-400/30',
-        label: '🟡 부분적 유사성',
-        desc: '부분적 유사성이 확인됩니다'
-    },
-    Low: {
-        gradient: 'from-green-900 to-emerald-700',
-        badge: 'bg-green-500/30 text-green-100 border-green-400/30',
-        label: '🟢 낮은 침해 위험',
-        desc: '독창성이 확인됩니다'
-    }
-};
+    const handleDownloadPdf = async () => {
+        setIsExporting(true);
+        setTimeout(async () => {
+            const success = await downloadPdfFromElement(reportRef, 'Shortcut_Patent_Report');
+            setIsExporting(false);
+            if (success) {
+                alert("리포트가 성공적으로 다운로드되었습니다.");
+            } else {
+                alert("PDF 생성 중 오류가 발생했습니다.");
+            }
+        }, 300); // UI 렌더링 시간을 충분히 확보 (150 -> 300 늘림)
+    };
 
-/**
- * RAG 분석 결과 뷰 컴포넌트
- * 침해 위험도, 유사도 컬러 코딩, 유사 특허 목록을 시각화합니다.
- */
-export function ResultView({
-    riskLevel,
-    riskScore,
-    similarCount,
-    uniqueness,
-    topPatents,
-    onReset,
-    onExportPdf
-}: ResultViewProps) {
-    const risk = RISK_CONFIG[riskLevel];
+    const getRiskStyles = (level: string) => {
+        // High -> Red 기반 위협, Medium -> Yellow 주의, Low -> Green 안전
+        switch (level) {
+            case 'High': return { text: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200' };
+            case 'Medium': return { text: 'text-yellow-700', bg: 'bg-yellow-50', border: 'border-yellow-200' };
+            case 'Low': return { text: 'text-green-700', bg: 'bg-green-50', border: 'border-green-200' };
+            default: return { text: 'text-gray-700', bg: 'bg-gray-50', border: 'border-gray-200' };
+        }
+    };
+    const riskStyles = getRiskStyles(resultData.riskLevel);
 
     return (
-        <div id="result-view" className="w-full max-w-4xl mx-auto mt-6 animate-in fade-in duration-500">
-            {/* 결과 헤더 */}
-            <div className={`bg-gradient-to-br ${risk.gradient} rounded-t-2xl p-8 text-white shadow-xl`}>
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <p className="text-white/70 text-sm font-medium mb-1">특허 침해 분석 결과</p>
-                        <h2 className="text-3xl font-black">{risk.label}</h2>
-                        <p className="text-white/80 mt-1">{risk.desc}</p>
-                    </div>
-                    <div className="flex flex-col items-center bg-white/10 rounded-2xl px-8 py-4 border border-white/20 min-w-[120px]">
-                        <span className="text-5xl font-black">{riskScore}<span className="text-2xl">%</span></span>
-                        <span className="text-white/70 text-xs mt-1">위험도 점수</span>
-                    </div>
-                </div>
-                {/* 요약 통계 */}
-                <div className="mt-6 flex gap-4 flex-wrap">
-                    <span className={`px-4 py-2 rounded-full border text-sm font-bold ${risk.badge}`}>
-                        📄 유사 특허 {similarCount}건 발견
-                    </span>
-                </div>
+        <div className="w-full max-w-4xl mx-auto mt-6 animate-in fade-in slide-in-from-bottom-8 duration-500" ref={reportRef}>
+            {/* 1. 요약 리포트 헤더 */}
+            <div className="bg-gradient-to-br from-slate-900 to-blue-900 rounded-t-2xl p-8 text-white shadow-xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-10 rounded-full blur-3xl mix-blend-overlay"></div>
+                <h2 className="text-3xl font-black mb-2 tracking-tight text-white drop-shadow-md">침해 위험도 분석 리포트</h2>
+                <p className="text-blue-200 font-medium">인공지능 RAG 파이프라인 기반 특허 선행 기술 조사 결과</p>
             </div>
 
-            {/* 결과 본문 */}
-            <div className="bg-white p-8 rounded-b-2xl shadow-xl border border-gray-100/50">
-                {/* 핵심 차별성 */}
-                {uniqueness && (
-                    <section className="mb-8 p-5 bg-blue-50 rounded-xl border border-blue-100">
-                        <h3 className="text-sm font-black text-blue-700 uppercase tracking-wider mb-2">💡 핵심 차별성 분석</h3>
-                        <p className="text-gray-700 leading-relaxed">{uniqueness}</p>
-                    </section>
-                )}
+            {/* 2. 본문 결과 영역 */}
+            <div className="bg-white p-6 sm:p-10 rounded-b-2xl shadow-xl border border-gray-100/50">
 
-                {/* 유사 특허 목록 */}
-                <section>
-                    <h3 className="text-lg font-black text-gray-800 mb-4">
-                        🔍 유사 특허 목록 ({topPatents.length}건)
-                    </h3>
-                    {topPatents.length === 0 ? (
-                        <div className="text-center py-12 text-gray-400">
-                            <div className="text-5xl mb-4">📭</div>
-                            <p className="font-medium">유사 특허가 발견되지 않았습니다</p>
-                            <p className="text-sm mt-1">독창적인 아이디어입니다!</p>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 gap-4">
-                            {topPatents.map((patent, index) => (
-                                <PatentCard key={patent.id} patent={patent} rank={index + 1} />
+                {/* 입력 아이디어 리마인드 */}
+                <div className="mb-10">
+                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 pl-1">분석 대상 아이디어</h3>
+                    <div className="p-5 bg-slate-50 border-l-4 border-slate-700 rounded-r-xl text-slate-700 font-medium whitespace-pre-wrap leading-relaxed">
+                        "{idea}"
+                    </div>
+                </div>
+
+                {/* 대시보드 요약 (상태별 컬러 바인딩) */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-12">
+                    <div className={`p-6 rounded-2xl border-2 text-center transition-all shadow-sm ${riskStyles.bg} ${riskStyles.border}`}>
+                        <h4 className="text-gray-600 font-bold mb-2 text-sm uppercase tracking-wider">종합 침해 위험도</h4>
+                        <span className={`text-4xl font-black ${riskStyles.text} drop-shadow-sm`}>
+                            {resultData.riskLevel} <span className="text-2xl">({resultData.riskScore}%)</span>
+                        </span>
+                    </div>
+                    <div className="p-6 bg-blue-50/50 rounded-2xl border-2 border-blue-100 text-center shadow-sm">
+                        <h4 className="text-gray-600 font-bold mb-2 text-sm uppercase tracking-wider">검토된 선행 특허</h4>
+                        <span className="text-4xl font-black text-blue-700 drop-shadow-sm">{resultData.similarCount}건</span>
+                    </div>
+                    <div className="p-6 bg-slate-50 rounded-2xl border-2 border-slate-100 text-center shadow-sm">
+                        <h4 className="text-gray-600 font-bold mb-2 text-sm uppercase tracking-wider">핵심 차별성</h4>
+                        <span className="text-base font-bold text-slate-700 mt-1 block break-keep leading-tight">{resultData.uniqueness}</span>
+                    </div>
+                </div>
+
+                {/* 상세 분석 내용 (Card Component 매핑) */}
+                <div className="mb-10">
+                    <div className="flex items-center justify-between border-b-2 border-gray-100 pb-3 mb-6">
+                        <h3 className="text-xl font-bold text-gray-800">🔍 핵심 유사 특허 분석 <span className="text-blue-500 font-black">Top {resultData.topPatents.length}</span></h3>
+                    </div>
+
+                    {resultData.topPatents.length > 0 ? (
+                        <ul className="space-y-0">
+                            {resultData.topPatents.map((patent, idx) => (
+                                <PatentCard key={idx} patent={patent} />
                             ))}
+                        </ul>
+                    ) : (
+                        <div className="py-12 px-6 text-center bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl">
+                            <span className="text-4xl mb-4 block">🎉</span>
+                            <h4 className="text-lg font-bold text-gray-700 mb-2">유사한 특허가 발견되지 않았습니다.</h4>
+                            <p className="text-gray-500">독창적인 아이디어입니다! 곧바로 특허 출원 절차를 밟으시는 것을 추천합니다.</p>
                         </div>
-                    )}
-                </section>
-
-                {/* 액션 버튼 영역 */}
-                <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-                    <button
-                        onClick={onReset}
-                        className="px-8 py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-700 transition-all shadow-md"
-                    >
-                        🔄 다시 분석하기
-                    </button>
-                    {onExportPdf && (
-                        <button
-                            onClick={onExportPdf}
-                            className="px-8 py-3 bg-white text-slate-900 font-bold rounded-xl border-2 border-slate-200 hover:border-slate-400 transition-all"
-                        >
-                            📄 PDF 내보내기
-                        </button>
                     )}
                 </div>
+
+                {/* Warning 반영: CSS 기반 유사도 바 차트 (특허 목록 아래 배치, recharts 미사용) */}
+                {resultData.topPatents.length > 0 && (
+                    <SimilarityBarChart patents={resultData.topPatents} />
+                )}
+
+                {/* 액션 버튼 그룹 (캡쳐가 진행될 땐 숨김) */}
+                {!isExporting && (
+                    <div className="flex justify-center flex-col sm:flex-row gap-4 pt-8 border-t-2 border-gray-100" data-html2canvas-ignore="true">
+                        <button
+                            onClick={handleDownloadPdf}
+                            className="px-8 py-4 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 hover:border-blue-300 hover:text-blue-700 transition-all flex justify-center items-center shadow-sm"
+                        >
+                            <span className="mr-2 text-xl">📥</span> PDF 리포트 파일로 보관
+                        </button>
+                        <button
+                            onClick={onReset}
+                            className="px-8 py-4 bg-slate-900 border-2 border-slate-900 text-white font-bold rounded-xl shadow-md hover:bg-slate-800 hover:shadow-xl hover:-translate-y-0.5 transition-all flex justify-center items-center"
+                        >
+                            다른 참신한 아이디어 검사하기 <span className="ml-2">🔄</span>
+                        </button>
+                    </div>
+                )}
+
+                {/* 캡쳐 진행 중일 때 문서 끝 표시기 */}
+                {isExporting && (
+                    <div className="flex justify-center pt-8 mt-4 opacity-50">
+                        <p className="text-xs text-gray-400 font-bold tracking-[0.2em] uppercase">- DOCUMENT END -</p>
+                    </div>
+                )}
             </div>
         </div>
     );

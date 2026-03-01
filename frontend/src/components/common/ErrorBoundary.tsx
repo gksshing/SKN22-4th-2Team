@@ -1,4 +1,4 @@
-import { Component, ErrorInfo, ReactNode } from 'react';
+import { Component, ReactNode } from 'react';
 import { ErrorFallback } from './ErrorFallback';
 
 interface Props {
@@ -7,41 +7,43 @@ interface Props {
 
 interface State {
     hasError: boolean;
-    error: Error | null;
+    errorTitle: string;
+    errorMessage: string;
 }
 
-/**
- * 전역 에러 바운더리 컴포넌트
- * 렌더링 중 발생하는 JavaScript 에러를 캐치하여 Fallback UI를 표시합니다.
- */
 export class ErrorBoundary extends Component<Props, State> {
-    constructor(props: Props) {
-        super(props);
-        this.state = { hasError: false, error: null };
-    }
-
-    static getDerivedStateFromError(error: Error): State {
-        return { hasError: true, error };
-    }
-
-    componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-        console.error('ErrorBoundary 에러 캐치:', error, errorInfo);
-    }
-
-    handleRetry = () => {
-        this.setState({ hasError: false, error: null });
+    public state: State = {
+        hasError: false,
+        errorTitle: '',
+        errorMessage: ''
     };
 
-    render() {
+    public static getDerivedStateFromError(error: Error): State {
+        return {
+            hasError: true,
+            errorTitle: '예상치 못한 내부 오류가 발생했습니다 💥',
+            errorMessage: error.message || '애플리케이션 렌더링 중 문제가 발생했습니다.'
+        };
+    }
+
+    public handleReset = () => {
+        this.setState({ hasError: false, errorTitle: '', errorMessage: '' });
+        window.location.reload();
+    };
+
+    public render() {
         if (this.state.hasError) {
             return (
-                <ErrorFallback
-                    title="예기치 못한 오류가 발생했습니다"
-                    message="페이지를 새로고침하거나 잠시 후 다시 시도해 주세요."
-                    onRetry={this.handleRetry}
-                />
+                <div className="min-h-screen p-8 flex flex-col items-center justify-center bg-gray-50">
+                    <ErrorFallback
+                        title={this.state.errorTitle}
+                        message={this.state.errorMessage}
+                        onRetry={this.handleReset}
+                    />
+                </div>
             );
         }
+
         return this.props.children;
     }
 }
