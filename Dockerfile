@@ -25,7 +25,21 @@ RUN /install/bin/pip install --no-cache-dir --upgrade "pip==24.0"
 RUN /install/bin/pip install --no-cache-dir -r requirements-api.txt
 
 
-# ─── Stage 2: Runtime ────────────────────────────────────────────────────────
+# ─── Stage 2: Frontend Builder ───────────────────────────────────────────────
+# Node.js 환경에서 React 소스 코드를 빌드하여 최적화된 정적 에셋(dist)을 생성합니다.
+FROM node:20-alpine AS frontend-builder
+WORKDIR /app/frontend
+
+# 패키지 매니저 파일들 복사 (레이어 캐싱)
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm ci
+
+# 전체 프론트엔드 소스코드 복사 및 빌드 진행
+COPY frontend/ ./
+RUN npm run build
+
+
+# ─── Stage 3: Runtime ────────────────────────────────────────────────────────
 # 컴파일러 및 빌드 도구 없이 순수 런타임 환경만 구성합니다.
 FROM python:3.11-slim AS runtime
 
@@ -62,9 +76,11 @@ ENV BUILD_DATE=${BUILD_DATE} \
     GIT_COMMIT=${GIT_COMMIT} \
     GIT_BRANCH=${GIT_BRANCH}
 
-# 애플리케이션 소스 복사
+# 애플리케이션 백엔드 소스 복사
 COPY src/ ./src/
-COPY frontend/ ./frontend/
+
+# Frontend 빌더 스테이지에서 생성된 정적 결과물(html, js, css)만 복사
+COPY --from=frontend-builder /app/frontend/dist/ ./frontend/dist/
 
 # ── entrypoint 스크립트 복사 및 실행 권한 설정 ────────────────────────────
 COPY entrypoint.sh /entrypoint.sh

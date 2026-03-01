@@ -1,131 +1,112 @@
 """
-History Manager - SQLite based persistent storage for analysis history.
+History Manager - SQLAlchemy based persistent storage for analysis history.
 """
-import sqlite3
 import json
+import logging
 from datetime import datetime
-from pathlib import Path
 from typing import List, Dict, Optional
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 
-DB_PATH = Path(__file__).parent / "data" / "history.db"
+from src.database.models import UserSession, SearchHistory
+
+logger = logging.getLogger(__name__)
 
 class HistoryManager:
-    def __init__(self):
-        self._init_db()
-        
-    def _init_db(self):
-        """Initialize SQLite database table and migrate schema."""
-        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        
-        # Create table if not exists with user_id
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS analysis_history (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                timestamp TEXT,
-                user_id TEXT,
-                user_idea TEXT,
-                result_json TEXT,
-                risk_level TEXT,
-                score INTEGER
-            )
-        ''')
-        
-        # Check if user_id column exists (Migration for existing DB)
-        c.execute("PRAGMA table_info(analysis_history)")
-        columns = [info[1] for info in c.fetchall()]
-        if 'user_id' not in columns:
-            print("Migrating DB: Adding user_id column...")
-            try:
-                c.execute("ALTER TABLE analysis_history ADD COLUMN user_id TEXT")
-                # Assign default user_id for existing records
-                c.execute("UPDATE analysis_history SET user_id = 'legacy_user'")
-            except Exception as e:
-                print(f"Migration failed: {e}")
-            
-        conn.commit()
-        conn.close()
+    def __init__(self, db: Session):
+        self.db = db
         
     def save_analysis(self, result: Dict, user_id: str):
-        """Save analysis result to DB with user_id."""
+        """Save analysis result to DB with session mapping."""
         try:
-            conn = sqlite3.connect(DB_PATH)
-            c = conn.cursor()
-            
+            # 1. Provide a default fallback if user_id is missing or anonymous
+            session_id = user_id if user_id and user_id != "anonymous" else "anonymous_session"
+
+            # 2. Check if UserSession exists, create if missing to prevent FK error
+            user_session = self.db.query(UserSession).filter(UserSession.session_id == session_id).first()
+            if not user_session:
+                user_session = UserSession(session_id=session_id)
+                self.db.add(user_session)
+                self.db.commit()
+                self.db.refresh(user_session)
+
+            # 3. Extract metrics and save SearchHistory
             analysis = result.get('analysis', {})
             risk = analysis.get('infringement', {}).get('risk_level', 'unknown')
             score = analysis.get('similarity', {}).get('score', 0)
             
-            c.execute('''
-                INSERT INTO analysis_history (timestamp, user_id, user_idea, result_json, risk_level, score)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (
-                result.get('timestamp', datetime.now().isoformat()),
-                user_id,
-                result.get('user_idea', ''),
-                json.dumps(result, ensure_ascii=False),
-                risk,
-                score
-            ))
+            # Ensure timestamp is a datetime object
+            timestamp_str = result.get('timestamp', datetime.utcnow().isoformat())
+            try:
+                timestamp = datetime.fromisoformat(timestamp_str)
+            except ValueError:
+                timestamp = datetime.utcnow()
+                
+            history_record = SearchHistory(
+                session_id=session_id,
+                user_idea=result.get('user_idea', ''),
+                result_json=json.dumps(result, ensure_ascii=False),
+                risk_level=risk,
+                score=score,
+                timestamp=timestamp
+            )
             
-            conn.commit()
-            conn.close()
+            self.db.add(history_record)
+            self.db.commit()
             return True
+            
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            logger.error(f"Database error saving history: {e}", exc_info=True)
+            return False
         except Exception as e:
-            print(f"Failed to save history: {e}")
+            self.db.rollback()
+            logger.error(f"Unexpected error saving history: {e}", exc_info=True)
             return False
             
     def load_recent(self, user_id: str, limit: int = 20) -> List[Dict]:
-        """Load recent analysis history for specific user."""
+        """Load recent analysis history for specific user session."""
         try:
-            conn = sqlite3.connect(DB_PATH)
-            conn.row_factory = sqlite3.Row
-            c = conn.cursor()
-            
-            c.execute('''
-                SELECT result_json FROM analysis_history 
-                WHERE user_id = ?
-                ORDER BY id DESC LIMIT ?
-            ''', (user_id, limit))
-            
-            rows = c.fetchall()
-            history = [json.loads(row['result_json']) for row in rows]
-            
-            conn.close()
+            session_id = user_id if user_id and user_id != "anonymous" else "anonymous_session"
+            recent_histories = (
+                self.db.query(SearchHistory)
+                .filter(SearchHistory.session_id == session_id)
+                .order_by(SearchHistory.id.desc())
+                .limit(limit)
+                .all()
+            )
+            history = [json.loads(record.result_json) for record in recent_histories]
             return history
         except Exception as e:
-            print(f"Failed to load history: {e}")
+            logger.error(f"Failed to load recent history: {e}", exc_info=True)
             return []
 
     def find_cached_result(self, user_idea: str, user_id: str) -> Optional[Dict]:
         """Find the most recent identical query in history to act as a cache."""
         try:
-            conn = sqlite3.connect(DB_PATH)
-            conn.row_factory = sqlite3.Row
-            c = conn.cursor()
+            session_id = user_id if user_id and user_id != "anonymous" else "anonymous_session"
+            cached = (
+                self.db.query(SearchHistory)
+                .filter(SearchHistory.session_id == session_id, SearchHistory.user_idea == user_idea)
+                .order_by(SearchHistory.id.desc())
+                .first()
+            )
             
-            # Use exact match for now. In future, semantic similarity could be used.
-            c.execute('''
-                SELECT result_json FROM analysis_history 
-                WHERE user_id = ? AND user_idea = ?
-                ORDER BY id DESC LIMIT 1
-            ''', (user_id, user_idea))
-            
-            row = c.fetchone()
-            conn.close()
-            
-            if row:
-                return json.loads(row['result_json'])
+            if cached:
+                return json.loads(cached.result_json)
             return None
         except Exception as e:
-            print(f"Failed to check cache: {e}")
+            logger.error(f"Failed to check cache history: {e}", exc_info=True)
             return None
 
     def clear_history(self, user_id: str):
-        """Delete history for specific user."""
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        c.execute('DELETE FROM analysis_history WHERE user_id = ?', (user_id,))
-        conn.commit()
-        conn.close()
+        """Delete history for specific user session."""
+        try:
+            session_id = user_id if user_id and user_id != "anonymous" else "anonymous_session"
+            user_session = self.db.query(UserSession).filter(UserSession.session_id == session_id).first()
+            if user_session:
+                self.db.delete(user_session)
+                self.db.commit()
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            logger.error(f"Failed to clear history for {user_id}: {e}", exc_info=True)
