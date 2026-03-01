@@ -315,6 +315,19 @@ class PipelineConfig:
 
 
 # =============================================================================
+# Authentication Configuration
+# =============================================================================
+
+@dataclass
+class AuthConfig:
+    """Authentication and JWT configuration."""
+    
+    secret_key: str = field(default_factory=lambda: os.environ.get("SECRET_KEY", "your-super-secret-key-change-it-in-prod"))
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = field(default_factory=lambda: int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "30")))
+    refresh_token_expire_minutes: int = field(default_factory=lambda: int(os.environ.get("REFRESH_TOKEN_EXPIRE_MINUTES", "1440")))
+
+# =============================================================================
 # Logging Configuration
 # =============================================================================
 
@@ -347,6 +360,7 @@ class PatentGuardConfig:
     pinecone: PineconeConfig = field(default_factory=PineconeConfig)
     painet: PAINETConfig = field(default_factory=PAINETConfig)
     self_rag: SelfRAGConfig = field(default_factory=SelfRAGConfig)
+    auth: AuthConfig = field(default_factory=AuthConfig)
     agent: AgentConfig = field(default_factory=AgentConfig)
     pipeline: PipelineConfig = field(default_factory=PipelineConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
@@ -382,6 +396,14 @@ def update_config_from_env() -> PatentGuardConfig:
     # Pinecone API
     if os.environ.get("PINECONE_API_KEY"):
         config.pinecone.api_key = os.environ["PINECONE_API_KEY"]
+
+    # Authentication
+    if os.environ.get("SECRET_KEY"):
+        config.auth.secret_key = os.environ["SECRET_KEY"]
+    if os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES"):
+        config.auth.access_token_expire_minutes = int(os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"])
+    if os.environ.get("REFRESH_TOKEN_EXPIRE_MINUTES"):
+        config.auth.refresh_token_expire_minutes = int(os.environ["REFRESH_TOKEN_EXPIRE_MINUTES"])
 
     # Agent / Models Config
     if os.environ.get("EMBEDDING_MODEL"):

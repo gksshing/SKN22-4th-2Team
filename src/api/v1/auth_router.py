@@ -1,0 +1,74 @@
+import logging
+from fastapi import APIRouter, Depends, HTTPException, status, Request
+from sqlalchemy.orm import Session
+from src.database.connection import get_db
+from src.database.models import User
+from src.api.schemas.auth import UserCreate, UserLogin, UserResponse, Token
+from src.api.services.security import get_password_hash, verify_password, create_access_token, create_refresh_token
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
+
+limiter = Limiter(key_func=get_remote_address)
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/auth", tags=["auth"])
+
+@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+def register(user_in: UserCreate, db: Session = Depends(get_db)):
+    """Register a new user."""
+    # Check if user already exists
+    user = db.query(User).filter(User.email == user_in.email).first()
+    if user:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="이미 존재하는 이메일입니다."
+        )
+    
+    # Create new user
+    new_user = User(
+        email=user_in.email,
+        hashed_password=get_password_hash(user_in.password)
+    )
+    db.add(new_user)
+    try:
+        db.commit()
+        db.refresh(new_user)
+    except Exception as e:
+        db.rollback()
+        logger.error(f"User registration failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="회원가입 처리 중 오류가 발생했습니다."
+        )
+    
+    return new_user
+
+@router.post("/login", response_model=Token)
+@limiter.limit("5/minute")
+def login(request: Request, user_in: UserLogin, db: Session = Depends(get_db)):
+    """Authenticate user and return tokens."""
+    user = db.query(User).filter(User.email == user_in.email).first()
+    if not user or not verify_password(user_in.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="이메일 또는 비밀번호가 올바르지 않습니다.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="비활성화된 계정입니다."
+        )
+
+    # Generate tokens
+    access_token = create_access_token(data={"sub": user.email})
+    refresh_token = create_refresh_token(data={"sub": user.email})
+    
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer"
+    }

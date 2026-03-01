@@ -42,9 +42,16 @@ from src.config import config
 
 from contextlib import asynccontextmanager
 from src.api.v1.router import router as api_v1_router
+from src.api.v1.auth_router import router as auth_router
 from src.utils import configure_json_logging
 from src.api.middleware import SecurityMiddleware
 from src.security import PromptInjectionError
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address)
 
 
 @asynccontextmanager
@@ -87,6 +94,8 @@ def create_app() -> FastAPI:
         version="1.0.0",
         lifespan=lifespan,
     )
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
     # 3. 미들웨어 추가 (순서는 나중에 등록한 것이 먼저 실행됨)
     # CORS 도메인은 환경변수 또는 로컬호스트로 제한하여 보안 설정 원복 방지
@@ -142,6 +151,7 @@ def create_app() -> FastAPI:
         )
 
     # 5. API Endpoints 라우터 통합
+    app.include_router(auth_router, prefix="/api/v1")
     app.include_router(api_v1_router, prefix="/api/v1", tags=["analyze"])
 
     from fastapi.responses import FileResponse
