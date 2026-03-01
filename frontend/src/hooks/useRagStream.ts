@@ -70,20 +70,31 @@ export function useRagStream() {
                     'Accept': 'text/event-stream',
                     'X-Session-ID': getSessionId(), // Issue #24: 세션 식별자 헤더
                 },
+                credentials: 'include', // Cookie 인증 사용 (Set-Cookie 대응)
                 body: JSON.stringify(reqBody),
                 signal: abortController.signal
             });
 
             if (!response.ok) {
+                let errorMsg = 'NETWORK_ERROR';
+                try {
+                    const errData = await response.json();
+                    if (errData.detail) {
+                        errorMsg = typeof errData.detail === 'string'
+                            ? errData.detail
+                            : (Array.isArray(errData.detail) ? errData.detail[0].msg : 'NETWORK_ERROR');
+                    }
+                } catch { /* ignore parsing error */ }
+
                 // HTTP Status 분기 처리
                 if (response.status === 429) {
-                    throw new Error('RATE_LIMIT'); // Issue #25: Rate Limit 초과 전용 에러
+                    throw new Error('RATE_LIMIT');
                 } else if (response.status === 413 || response.status === 422) {
-                    throw new Error('TOKEN_EXCEEDED');
+                    throw new Error(errorMsg !== 'NETWORK_ERROR' ? errorMsg : 'TOKEN_EXCEEDED');
                 } else if (response.status === 404) {
                     throw new Error('NOT_FOUND');
                 } else {
-                    throw new Error('NETWORK_ERROR');
+                    throw new Error(errorMsg);
                 }
             }
 
