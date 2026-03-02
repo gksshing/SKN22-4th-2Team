@@ -315,33 +315,8 @@ class PipelineConfig:
 
 
 # =============================================================================
-# Authentication Configuration
+# Logging Configuration
 # =============================================================================
-
-@dataclass
-class AuthConfig:
-    """Authentication and JWT configuration."""
-    
-    secret_key: str = field(default_factory=lambda: os.environ.get("SECRET_KEY", "your-super-secret-key-change-it-in-prod"))
-    algorithm: str = "HS256"
-    access_token_expire_minutes: int = field(default_factory=lambda: int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "30")))
-    refresh_token_expire_minutes: int = field(default_factory=lambda: int(os.environ.get("REFRESH_TOKEN_EXPIRE_MINUTES", "1440")))
-
-@dataclass
-class SocialAuthConfig:
-    """OAuth2 Social Login configuration."""
-    google_client_id: Optional[str] = field(default_factory=lambda: os.environ.get("GOOGLE_CLIENT_ID"))
-    google_client_secret: Optional[str] = field(default_factory=lambda: os.environ.get("GOOGLE_CLIENT_SECRET"))
-    google_redirect_uri: Optional[str] = field(default_factory=lambda: os.environ.get("GOOGLE_REDIRECT_URI", "http://localhost:8000/api/v1/auth/callback/google"))
-    
-    naver_client_id: Optional[str] = field(default_factory=lambda: os.environ.get("NAVER_CLIENT_ID"))
-    naver_client_secret: Optional[str] = field(default_factory=lambda: os.environ.get("NAVER_CLIENT_SECRET"))
-    naver_redirect_uri: Optional[str] = field(default_factory=lambda: os.environ.get("NAVER_REDIRECT_URI", "http://localhost:8000/api/v1/auth/callback/naver"))
-    
-    kakao_client_id: Optional[str] = field(default_factory=lambda: os.environ.get("KAKAO_CLIENT_ID"))
-    kakao_client_secret: Optional[str] = field(default_factory=lambda: os.environ.get("KAKAO_CLIENT_SECRET"))
-    kakao_redirect_uri: Optional[str] = field(default_factory=lambda: os.environ.get("KAKAO_REDIRECT_URI", "http://localhost:8000/api/v1/auth/callback/kakao"))
-    frontend_url: str = field(default_factory=lambda: os.environ.get("FRONTEND_URL", "http://localhost:5173"))
 
 # =============================================================================
 # Logging Configuration
@@ -376,11 +351,9 @@ class PatentGuardConfig:
     pinecone: PineconeConfig = field(default_factory=PineconeConfig)
     painet: PAINETConfig = field(default_factory=PAINETConfig)
     self_rag: SelfRAGConfig = field(default_factory=SelfRAGConfig)
-    auth: AuthConfig = field(default_factory=AuthConfig)
     agent: AgentConfig = field(default_factory=AgentConfig)
     pipeline: PipelineConfig = field(default_factory=PipelineConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
-    social_auth: SocialAuthConfig = field(default_factory=SocialAuthConfig)
     frontend_url: str = field(default_factory=lambda: os.environ.get("FRONTEND_URL", "http://localhost:5173"))
 
 
@@ -415,14 +388,6 @@ def update_config_from_env() -> PatentGuardConfig:
     if os.environ.get("PINECONE_API_KEY"):
         config.pinecone.api_key = os.environ["PINECONE_API_KEY"]
 
-    # Authentication
-    if os.environ.get("SECRET_KEY"):
-        config.auth.secret_key = os.environ["SECRET_KEY"]
-    if os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES"):
-        config.auth.access_token_expire_minutes = int(os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"])
-    if os.environ.get("REFRESH_TOKEN_EXPIRE_MINUTES"):
-        config.auth.refresh_token_expire_minutes = int(os.environ["REFRESH_TOKEN_EXPIRE_MINUTES"])
-
     # Agent / Models Config
     if os.environ.get("EMBEDDING_MODEL"):
         config.agent.embedding_model = os.environ["EMBEDDING_MODEL"]
@@ -450,30 +415,7 @@ def update_config_from_env() -> PatentGuardConfig:
     if os.environ.get("SPARSE_WEIGHT"):
         config.agent.sparse_weight = float(os.environ["SPARSE_WEIGHT"])
 
-    # Social Auth
-    if os.environ.get("GOOGLE_CLIENT_ID"):
-        config.social_auth.google_client_id = os.environ["GOOGLE_CLIENT_ID"]
-    if os.environ.get("GOOGLE_CLIENT_SECRET"):
-        config.social_auth.google_client_secret = os.environ["GOOGLE_CLIENT_SECRET"]
-    if os.environ.get("GOOGLE_REDIRECT_URI"):
-        config.social_auth.google_redirect_uri = os.environ["GOOGLE_REDIRECT_URI"]
-    
-    if os.environ.get("NAVER_CLIENT_ID"):
-        config.social_auth.naver_client_id = os.environ["NAVER_CLIENT_ID"]
-    if os.environ.get("NAVER_CLIENT_SECRET"):
-        config.social_auth.naver_client_secret = os.environ["NAVER_CLIENT_SECRET"]
-    if os.environ.get("NAVER_REDIRECT_URI"):
-        config.social_auth.naver_redirect_uri = os.environ["NAVER_REDIRECT_URI"]
-        
-    if os.environ.get("KAKAO_CLIENT_ID"):
-        config.social_auth.kakao_client_id = os.environ["KAKAO_CLIENT_ID"]
-    if os.environ.get("KAKAO_CLIENT_SECRET"):
-        config.social_auth.kakao_client_secret = os.environ["KAKAO_CLIENT_SECRET"]
-    if os.environ.get("KAKAO_REDIRECT_URI"):
-        config.social_auth.kakao_redirect_uri = os.environ["KAKAO_REDIRECT_URI"]
-    
     if os.environ.get("FRONTEND_URL"):
-        config.social_auth.frontend_url = os.environ["FRONTEND_URL"]
         config.frontend_url = os.environ["FRONTEND_URL"]
 
     return config

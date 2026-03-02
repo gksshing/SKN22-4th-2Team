@@ -1,27 +1,2 @@
-export interface SignupParams {
-    email: string;
-    password: string;
-    sessionId?: string;
-}
-
-export interface UserResponse {
-    email: string;
-}
-
-export interface LoginResponse {
-    status: string;
-    message: string;
-    user: UserResponse;
-}
-
-export interface LoginParams {
-    email: string;
-    password: string;
-    sessionId?: string;
-}
-
-export interface AuthState {
-    user: UserResponse | null;
-    isAuthenticated: boolean;
-    isLoading: boolean;
-}
+// Auth removed
+export type User = null;

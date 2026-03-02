@@ -7,28 +7,12 @@ from sqlalchemy.orm import relationship
 
 from .connection import Base
 
-class User(Base):
-    __tablename__ = "users"
-
-    id = Column(Integer, primary_key=True, index=True)
-    email = Column(String, unique=True, index=True, nullable=False)
-    hashed_password = Column(String, nullable=True)  # 소셜 로그인의 경우 비밀번호가 없을 수 있음
-    is_active = Column(Boolean, default=True)
-    social_provider = Column(String, nullable=True)  # google, naver, kakao
-    social_id = Column(String, nullable=True)        # 소셜 플랫폼에서 제공하는 고유 ID
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-
 class UserSession(Base):
     __tablename__ = "usersession"
 
     session_id = Column(String, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True) # Optional link to user
     ip_address = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-
-    # Relationship to user
-    user = relationship("User", backref="sessions")
     # 1:N relationship with SearchHistory
     searches = relationship("SearchHistory", back_populates="session", cascade="all, delete-orphan")
 

@@ -4,9 +4,8 @@ from typing import Any
 
 from src.api.schemas.request import AnalyzeRequest
 from src.api.schemas.response import HistoryResponse
-from src.api.dependencies import get_current_user_optional, get_patent_agent, get_history_manager, get_db
+from src.api.dependencies import get_patent_agent, get_history_manager, get_db
 from sqlalchemy.orm import Session
-from src.database.models import User
 from src.api.services.analyze_service import process_analysis_stream
 from src.patent_agent import PatentAgent
 from src.history_manager import HistoryManager
@@ -20,14 +19,12 @@ router = APIRouter()
 async def analyze_patent(
     request: AnalyzeRequest,
     req: Request,
-    current_user_email: str | None = Depends(get_current_user_optional),
     agent: PatentAgent = Depends(get_patent_agent),
     history: HistoryManager = Depends(get_history_manager),
     db: Session = Depends(get_db)
 ):
     try:
-        user = db.query(User).filter(User.email == current_user_email).first()
-        user_id = user.id if user else None
+        user_id = None
 
         # Check if streaming is requested
         if request.stream:
@@ -55,16 +52,11 @@ async def analyze_patent(
 async def get_history(
     req: Request,
     limit: int = Query(20, description="최대 조회 개수"),
-    current_user_email: str | None = Depends(get_current_user_optional),
     history: HistoryManager = Depends(get_history_manager),
     db: Session = Depends(get_db)
 ):
     try:
         user_id = None
-        if current_user_email:
-            user = db.query(User).filter(User.email == current_user_email).first()
-            if user:
-                user_id = user.id
         
         # If not logged in, fetch by session_id (X-Session-ID header)
         session_id = None
@@ -76,7 +68,7 @@ async def get_history(
                 return HistoryResponse(user_id="anonymous", history=[])
 
         history_items = history.load_recent(user_id=user_id, session_id=session_id, limit=limit)
-        return HistoryResponse(user_id=current_user_email or "anonymous", history=history_items)
+        return HistoryResponse(user_id="anonymous", history=history_items)
     except Exception as e:
-        logger.error(f"[v51c8a7b] Error retrieving history for {current_user_email}: {e}", exc_info=True)
+        logger.error(f"[v51c8a7b] Error retrieving history: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to retrieve history")
