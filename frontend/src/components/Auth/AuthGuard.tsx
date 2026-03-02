@@ -73,8 +73,8 @@ export const AuthGuard = (props: AuthGuardProps) => {
             {/* 메인 서비스 콘텐츠 (항상 렌더링하여 배경으로 유지) */}
             {children}
 
-            {/* 인증 모달 오버레이 (비로그인 & !isGuest 상태일 때만 표시) */}
-            {!user && !isGuest && (
+            {/* 인증 모달 오버레이 (로그인 전용 접근 제어) */}
+            {!user && isGuest === false && (
                 <div 
                     className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
                     aria-modal="true"

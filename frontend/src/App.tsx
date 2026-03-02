@@ -28,11 +28,7 @@ function App() {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { user: _user, isLoading: isAuthLoading, login, signup, logout, fetchMe, sessionExpiredMsg, clearSessionExpiredMsg } = useAuth();
     const [authView, setAuthView] = useState<'login' | 'signup'>('login');
-    /** 게스트 유저 진입 상태 (AuthGuard 제어용) — Issue #GuestAccess */
-    const [isGuest, setIsGuest] = useState<boolean>(() => {
-        const saved = sessionStorage.getItem('isGuest');
-        return saved === null ? true : saved === 'true'; // Default to true if not set
-    });
+    const [isGuest, setIsGuest] = useState<boolean>(true); // Default to guest mode for main page access first
 
     // 세션 만료 메시지 처리
     useEffect(() => {
@@ -50,10 +46,7 @@ function App() {
         }
     }, [_user]);
 
-    // 게스트 상태 변경 시 sessionStorage 동기화
-    useEffect(() => {
-        sessionStorage.setItem('isGuest', isGuest.toString());
-    }, [isGuest]);
+    // (sessionStorage sync removed as we now default to true)
     // ================================================
 
     // RAG 분석 상태 관리 훅
