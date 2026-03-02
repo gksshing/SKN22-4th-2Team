@@ -13,6 +13,16 @@ export interface RagAnalysisResult {
     topPatents: PatentContext[]; // 상위 유사 특허 리스트
 }
 
+export interface HistoryRecord {
+    id: string; // db id
+    sessionId?: string;
+    idea: string;
+    riskLevel: 'Low' | 'Medium' | 'High';
+    riskScore: number;
+    similarCount: number;
+    createdAt: string; // ISO string
+}
+
 export interface RagStreamState {
     isAnalyzing: boolean;
     isSkeletonVisible: boolean;
@@ -22,23 +32,23 @@ export interface RagStreamState {
     resultData: RagAnalysisResult | null;
 }
 
-// ============================================================
-// Issue #51: Backend-Frontend 스트리밍 계약 타입 (SSE 표준 기준)
-// TODO: Backend가 SSE 표준으로 전환되면 파서 복원 시 이 타입을 그대로 사용
-// ============================================================
+/**
+ * SSE 스트림 이벤트 타입 정의 [Issue #51]
+ */
+export type StreamEventType = 'progress' | 'complete' | 'empty' | 'error' | 'message';
 
-/** 표준 SSE 이벤트 타입 목록 */
-export type StreamEventType = 'progress' | 'complete' | 'empty' | 'error';
-
-/** event:progress 이벤트의 data 스키마 */
-export interface StreamProgressEvent {
+/**
+ * SSE progress 이벤트 데이터 구조
+ */
+export interface StreamProgressData {
     percent: number;
     message: string;
 }
 
-/** event:complete 이벤트의 data 스키마 */
-export interface StreamCompleteEvent {
+/**
+ * SSE complete 이벤트 데이터 구조
+ */
+export interface StreamCompleteData {
+    percent: 100;
     result: RagAnalysisResult;
 }
-
-// ※ Backend SSE 전환 완료 (Issue #51) — NdjsonStreamLine 타입 제거됨
