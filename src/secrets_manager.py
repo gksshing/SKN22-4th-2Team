@@ -1,14 +1,14 @@
 """
 쇼특허(Short-Cut) – Secrets Manager 유틸리티
 =============================================
-실행 환경(APP_ENV)에 따라 시크릿 주입 방식을 분기합니다.
+모든 환경(로컬·프로덕션)에서 AWS Secrets Manager를 통해 시크릿을 로드합니다.
+.env 파일 의존성은 완전히 제거되었습니다.
 
-  APP_ENV=local       →  .env 파일 로드 (dotenv)
-  APP_ENV=production  →  AWS Secrets Manager 호출 → os.environ 주입
+우선순위:
+  1. ECS Task Definition secrets 필드로 이미 주입된 환경 변수 (감지 시 SM 호출 skip)
+  2. AWS Secrets Manager → os.environ 주입
 
-우선순위: AWS Secrets Manager > .env > 기존 환경 변수
-  - 프로덕션에서는 Secrets Manager 값이 기존 값을 덮어씁니다.
-  - 로컬에서는 .env 값이 기존 환경 변수를 덮어씁니다(force=True).
+로컬 개발 시에도 AWS 자격증명(~/.aws/credentials 또는 환경변수)이 필요합니다.
 """
 
 from __future__ import annotations
@@ -85,7 +85,7 @@ def _load_from_secrets_manager(
 def _inject_secrets_to_env(secrets: Dict[str, str]) -> None:
     """
     시크릿 딕셔너리를 os.environ에 주입합니다.
-    우선순위: Secrets Manager 값이 기존 환경 변수를 덮어씁니다.
+    Secrets Manager 값이 기존 환경 변수보다 우선합니다.
 
     Args:
         secrets: 주입할 키-값 딕셔너리
@@ -102,28 +102,6 @@ def _inject_secrets_to_env(secrets: Dict[str, str]) -> None:
             logger.debug("환경 변수 주입: %s", key)
 
     logger.info("%d개 시크릿 환경 변수 주입 완료", len(secrets))
-
-
-# =============================================================================
-# 로컬 .env 로더
-# =============================================================================
-
-def _load_from_dotenv(dotenv_path: Optional[str] = None) -> None:
-    """
-    .env 파일을 읽어 환경 변수로 로드합니다.
-    Secrets Manager에서 이미 주입된 값을 override합니다 (override=True).
-
-    단, 프로덕션 환경에서는 이 함수를 호출하지 않습니다.
-    """
-    try:
-        from dotenv import load_dotenv
-    except ImportError:
-        logger.warning(
-            "python-dotenv가 설치되어 있지 않습니다. .env 로드를 건너뜁니다."
-        )
-        return
-
-    load_dotenv(dotenv_path=dotenv_path, override=True)
 
 
 # =============================================================================
@@ -192,54 +170,48 @@ def bootstrap_secrets(
     aws_region: Optional[str] = None,
 ) -> None:
     """
-    APP_ENV 환경 변수에 따라 시크릿 주입 방식을 선택합니다.
+    AWS Secrets Manager에서 시크릿을 로드하여 os.environ에 주입합니다.
+    .env 파일은 사용하지 않습니다.
 
-    우선순위 규칙:
-      - production:  Secrets Manager → os.environ (override)
-                     .env 파일을 사용하지 않습니다.
-      - local:       .env 파일 → os.environ (override)
-                     boto3 호출 없음.
+    Skip 조건: 필수 키(OPENAI_API_KEY, PINECONE_API_KEY)가 이미 환경에 존재하는 경우
+    (ECS Task Definition natives secrets 필드로 주입된 경우 해당).
 
     Args:
-        secret_name: Secrets Manager 시크릿 이름. 환경 변수 SECRET_NAME으로 재정의 가능.
-        aws_region:  AWS 리전. 환경 변수 AWS_REGION으로 재정의 가능.
+        secret_name: Secrets Manager 시크릿 이름. SECRET_NAME 환경변수로 재정의 가능.
+        aws_region:  AWS 리전. AWS_REGION 또는 AWS_DEFAULT_REGION 환경변수로 재정의 가능.
     """
-    app_env = os.getenv("APP_ENV", "local").strip().lower()
-
-    # 환경 변수로 재정의 허용 (컨테이너 실행 시 유연성 확보)
+    # 환경 변수로 시크릿 이름·리전 재정의 허용 (컨테이너 실행 시 유연성 확보)
     secret_name = os.getenv("SECRET_NAME", secret_name)
-    region = aws_region or os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION")
+    region = aws_region or os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION") or "us-east-1"
 
-    logger.info("시크릿 부트스트랩 시작 (APP_ENV=%s, REGION=%s)", app_env, region or "default")
+    logger.info("시크릿 부트스트랩 시작 (Secret=%s, Region=%s)", secret_name, region)
 
-    # 1. 로컬 환경에서만 .env 파일 로드 (프로덕션에서는 물리적 .env 접근 원천 차단)
-    if app_env != "production":
-        _load_from_dotenv()
-    else:
-        logger.info(".env 로드 건너뜀: 프로덕션 환경에서는 물리적 .env 파일을 사용하지 않습니다.")
-
-    # 2. Then, load from AWS Secrets Manager if in production OR if explicitly requested via SECRET_NAME
-    # If ECS native secret injection is used, critical keys might already be present.
-    required_keys = ["OPENAI_API_KEY", "PINECONE_API_KEY"]
+    # 필수 키가 이미 모두 주입돼 있다면 Secrets Manager 호출 생략
+    # (ECS Task Definition의 secrets 필드 또는 수동 환경변수 주입 케이스)
+    required_keys = ["OPENAI_API_KEY", "PINECONE_API_KEY", "JWT_SECRET_KEY"]
     all_keys_present = all(os.getenv(k) for k in required_keys)
 
-    if (app_env == "production" or os.getenv("SECRET_NAME")) and not all_keys_present:
+    if all_keys_present:
+        logger.info(
+            "AWS Secrets Manager 호출 생략: 필수 키가 이미 환경에 존재합니다. "
+            "(ECS native secrets injection 또는 수동 설정으로 추정)"
+        )
+    else:
         try:
             secrets = _load_from_secrets_manager(secret_name, region)
             _inject_secrets_to_env(secrets)
-            _handle_gcp_credentials()
-        except Exception as e:
-            if app_env == "production":
-                # In production, this is a fatal error if native injection also failed
-                raise
-            else:
-                # In non-production, just log and continue (maybe env vars are set manually)
-                logger.warning("AWS Secrets Manager 로드 실패 (로컬 환경이므로 무시): %s", e)
-    elif all_keys_present:
-        logger.info("AWS Secrets Manager fetch skipped: Critical keys already present in environment (likely injected natively by ECS).")
+        except Exception as exc:
+            # 시크릿 로드 실패 시 앱 기동을 중단합니다.
+            # main.py의 Fast-Fail 로직이 이후에 필수 키 부재를 감지하여
+            # 명확한 에러 메시지를 남깁니다.
+            logger.critical(
+                "AWS Secrets Manager 로드 실패: %s. "
+                "AWS 자격증명 및 SECRET_NAME/AWS_REGION 환경변수를 확인하세요.",
+                exc,
+            )
+            raise
 
-    # 3. Handle GCP credentials if set manually via env
-    if app_env != "production":
-        _handle_gcp_credentials()
+    # GCP 자격증명 처리 (GOOGLE_APPLICATION_CREDENTIALS_JSON이 설정된 경우)
+    _handle_gcp_credentials()
 
-    logger.info("시크릿 부트스트랩 완료 (APP_ENV=%s)", app_env)
+    logger.info("시크릿 부트스트랩 완료")

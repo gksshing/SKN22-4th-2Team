@@ -1,10 +1,135 @@
+import { useState, useEffect, useCallback } from 'react';
 import { UserResponse } from '../types/auth';
 
-// Auth removed - returns mock data for now
-export const useAuth = () => ({
-    user: null as UserResponse | null,
-    isAuthenticated: false,
-    login: async () => { },
-    logout: () => { }
-});
+// 백엔드 API 베이스 URL
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
+// localStorage 키
+const TOKEN_KEY = 'shortcut_access_token';
+
+interface AuthState {
+    user: UserResponse | null;
+    isAuthenticated: boolean;
+    isLoading: boolean;
+    error: string | null;
+}
+
+interface UseAuthReturn extends AuthState {
+    login: (email: string, password: string) => Promise<void>;
+    signup: (email: string, password: string, name?: string) => Promise<void>;
+    logout: () => void;
+    clearError: () => void;
+}
+
+export const useAuth = (): UseAuthReturn => {
+    const [state, setState] = useState<AuthState>({
+        user: null,
+        isAuthenticated: false,
+        isLoading: true,
+        error: null,
+    });
+
+    /** 저장된 JWT로 사용자 정보를 복원합니다 (새로고침 시) */
+    const restoreUser = useCallback(async () => {
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (!token) {
+            setState(s => ({ ...s, isLoading: false }));
+            return;
+        }
+        try {
+            const res = await fetch(`${API_BASE}/api/v1/auth/me`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) {
+                const user: UserResponse = await res.json();
+                setState({ user, isAuthenticated: true, isLoading: false, error: null });
+            } else {
+                // 토큰 만료 등 → 로컬 삭제
+                localStorage.removeItem(TOKEN_KEY);
+                setState({ user: null, isAuthenticated: false, isLoading: false, error: null });
+            }
+        } catch {
+            localStorage.removeItem(TOKEN_KEY);
+            setState({ user: null, isAuthenticated: false, isLoading: false, error: null });
+        }
+    }, []);
+
+    // 마운트 시 토큰 복원
+    useEffect(() => {
+        restoreUser();
+    }, [restoreUser]);
+
+    /** 로그인: 이메일 + 비밀번호 → JWT 저장 → 사용자 정보 세팅 */
+    const login = useCallback(async (email: string, password: string) => {
+        setState(s => ({ ...s, isLoading: true, error: null }));
+        try {
+            const res = await fetch(`${API_BASE}/api/v1/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.detail || '로그인에 실패했습니다.');
+            }
+
+            localStorage.setItem(TOKEN_KEY, data.access_token);
+
+            // 토큰으로 사용자 정보 조회
+            const meRes = await fetch(`${API_BASE}/api/v1/auth/me`, {
+                headers: { Authorization: `Bearer ${data.access_token}` },
+            });
+            if (!meRes.ok) throw new Error('사용자 정보를 가져올 수 없습니다.');
+            const user: UserResponse = await meRes.json();
+
+            setState({ user, isAuthenticated: true, isLoading: false, error: null });
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : '로그인 중 오류가 발생했습니다.';
+            setState(s => ({ ...s, isLoading: false, error: msg }));
+            throw e; // 폼 레벨에서 처리 가능하도록 re-throw
+        }
+    }, []);
+
+    /** 회원가입: 이메일 + 비밀번호 + 이름 → 자동 로그인 */
+    const signup = useCallback(async (email: string, password: string, name?: string) => {
+        setState(s => ({ ...s, isLoading: true, error: null }));
+        try {
+            const res = await fetch(`${API_BASE}/api/v1/auth/signup`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password, name }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.detail || '회원가입에 실패했습니다.');
+            }
+            // 회원가입 성공 → 자동 로그인
+            await login(email, password);
+        } catch (e: unknown) {
+            // login() 실패 시 이미 state 업데이트됨
+            if (!(e instanceof Error && e.message.includes('로그인'))) {
+                const msg = e instanceof Error ? e.message : '회원가입 중 오류가 발생했습니다.';
+                setState(s => ({ ...s, isLoading: false, error: msg }));
+            }
+            throw e;
+        }
+    }, [login]);
+
+    /** 로그아웃: 토큰 삭제 + 상태 초기화 */
+    const logout = useCallback(() => {
+        localStorage.removeItem(TOKEN_KEY);
+        setState({ user: null, isAuthenticated: false, isLoading: false, error: null });
+    }, []);
+
+    const clearError = useCallback(() => {
+        setState(s => ({ ...s, error: null }));
+    }, []);
+
+    return {
+        ...state,
+        login,
+        signup,
+        logout,
+        clearError,
+    };
+};

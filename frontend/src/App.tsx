@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { TimeoutToast } from './components/Loading/TimeoutToast';
 import { IdeaInput } from './components/Form/IdeaInput';
 import { IpcFilterSelector } from './components/Form/IpcFilterSelector';
@@ -10,7 +10,16 @@ import { useAuth } from './hooks/useAuth';
 import { AuthGuard } from './components/Auth/AuthGuard';
 
 function App() {
-    const { user, logout } = useAuth();
+    const { user, logout, isLoading: authLoading } = useAuth();
+    const [authToast, setAuthToast] = useState('');
+    const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    /** 비로그인 시 상단 배너 토스트 표시 (alert 대체) */
+    const showAuthToast = (msg: string) => {
+        setAuthToast(msg);
+        if (toastTimer.current) clearTimeout(toastTimer.current);
+        toastTimer.current = setTimeout(() => setAuthToast(''), 3000);
+    };
     const [isGuest, setIsGuest] = useState(true);
     const [authView, setAuthView] = useState<'login' | 'signup'>('login');
 
@@ -36,7 +45,7 @@ function App() {
     // 폼 제출: 아이디어 텍스트를 상태에 저장하고 RAG 분석 시작
     const handleSubmitIdea = (inputIdea: string) => {
         if (!user) {
-            alert('특허 분석 기능을 이용하려면 로그인이 필요합니다.');
+            showAuthToast('특허 분석 기능을 이용하려면 로그인이 필요합니다.');
             setIsGuest(false);
             setAuthView('login');
             return;
@@ -48,7 +57,7 @@ function App() {
     // 히스토리 원클릭 → IdeaInput 값 동기화 + startAnalysis() 직접 호출
     const handleSelectHistory = (selectedIdea: string) => {
         if (!user) {
-            alert('기록을 확인하려면 로그인이 필요합니다.');
+            showAuthToast('기록을 확인하려면 로그인이 필요합니다.');
             setIsGuest(false);
             setAuthView('login');
             return;
@@ -71,14 +80,31 @@ function App() {
         }
     }, [isComplete]);
 
+    // 인증 초기화 중에는 헤더만 표시 (레이아웃 깜박임 방지)
+    if (authLoading) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-gray-400 text-sm">불러오는 중...</div>
+            </div>
+        );
+    }
+
     return (
         <AuthGuard
             isGuest={isGuest}
             setIsGuest={setIsGuest}
             authView={authView}
+            setAuthView={setAuthView}
             user={user}
         >
             <div className="min-h-screen bg-gray-50 relative">
+
+                {/* 비로그인 시 상단 토스트 배너 (alert 대체) */}
+                {authToast && (
+                    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[10000] bg-orange-500 text-white text-sm font-semibold px-6 py-3 rounded-full shadow-lg animate-bounce">
+                        🔒 {authToast}
+                    </div>
+                )}
 
                 <header className="bg-white border-b border-gray-100 px-8 py-5 shadow-sm flex items-center justify-between">
                     <div>

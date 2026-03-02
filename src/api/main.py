@@ -64,7 +64,7 @@ async def lifespan(app: FastAPI):
     try:
         # PatentAgent 초기화 시 내부적으로 config 검증 및 LLM 연결 테스트가 수행되길 기대합니다.
         agent = get_patent_agent()
-        logger.info(f"PatentAgent initialized (Model: {config.llm.model_name})")
+        logger.info(f"PatentAgent initialized (Model: {config.agent.analysis_model})")
         
         get_history_manager()
         logger.info("HistoryManager initialized.")
