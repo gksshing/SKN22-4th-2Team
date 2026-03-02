@@ -167,28 +167,43 @@ def create_app() -> FastAPI:
 
     # 6. 프론트엔드 서빙 (Vanilla JS vs React dist 자동 감지)
     # React 빌드 산출물(dist)이 있으면 우선 서빙하고, 없으면 기본 frontend 폴더를 서빙합니다.
+    import os
     from fastapi.responses import FileResponse
     from fastapi.staticfiles import StaticFiles
     
-    frontend_dir = "frontend/dist" if os.path.exists("frontend/dist") else "frontend"
+    # ── 프론트엔드 정적 파일 서빙 설정 ────────────────────────────────────
+    # 빌드된 React 에셋(dist)이 있으면 우선 사용, 없으면 소스 폴더(frontend) 사용
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    dist_path = os.path.join(base_dir, "frontend", "dist")
+    src_path = os.path.join(base_dir, "frontend")
+    
+    if os.path.exists(dist_path) and os.path.isdir(dist_path):
+        frontend_dir = dist_path
+        logger.info(f"Frontend: Using production build from {dist_path}")
+    else:
+        frontend_dir = src_path
+        logger.warning(f"Frontend: Production build not found at {dist_path}. Falling back to source at {src_path}")
+
     index_file = os.path.join(frontend_dir, "index.html")
 
     @app.get("/")
     async def serve_index():
         """Root 접속 시 프론트엔드 메인 페이지 반환 (ALB 헬스체크 200 OK)"""
         if os.path.exists(index_file):
+            logger.info(f"Serving index.html from {index_file}")
             return FileResponse(index_file)
-        return {"message": "Frontend index.html not found", "error": "ConfigurationError"}
-
-    @app.get("/health")
-    async def health_check():
+        
+        logger.error(f"Frontend index.html not found at {index_file}")
         return {
-            "status": "ok",
-            "build_commit": os.getenv("GIT_COMMIT", "unknown"),
-            "build_branch": os.getenv("GIT_BRANCH", "unknown"),
+            "status": "error",
+            "message": "Frontend index.html not found",
+            "path": index_file,
+            "cwd": os.getcwd()
         }
 
-    app.mount("/", StaticFiles(directory=frontend_dir), name="frontend")
+    # API 라우트들을 먼저 등록한 후, 나머지 모든 경로를 정적 파일로 마운트
+    # (이미 위에서 라우터들이 등록되었으므로 순서상 안전함)
+    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
 
     return app
 
