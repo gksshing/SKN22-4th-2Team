@@ -200,6 +200,11 @@ def create_app() -> FastAPI:
             "cwd": os.getcwd()
         }
 
+    @app.get("/health")
+    async def health_check():
+        """상태 점검 엔드포인트"""
+        return {"status": "ok", "message": "Healthy"}
+
     # API 라우트들을 먼저 등록한 후, 나머지 모든 경로를 정적 파일로 마운트
     # (이미 위에서 라우터들이 등록되었으므로 순서상 안전함)
     app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
