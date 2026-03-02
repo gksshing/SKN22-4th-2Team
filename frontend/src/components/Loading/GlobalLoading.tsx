@@ -1,4 +1,4 @@
-import React from 'react';
+import { FC } from 'react';
 
 interface GlobalLoadingProps {
     isAnalyzing: boolean;
@@ -11,7 +11,7 @@ interface GlobalLoadingProps {
  * - 분석 진행 중(isAnalyzing)일 때 화면 전체를 덮어 중복 입력을 방지하고
  * - 현재 진행 단계(message)를 사용자에게 고품질 스피너와 함께 보여줍니다.
  */
-export const GlobalLoading: React.FC<GlobalLoadingProps> = ({ isAnalyzing, message, onCancel }) => {
+export const GlobalLoading: FC<GlobalLoadingProps> = ({ isAnalyzing, message, onCancel }) => {
     if (!isAnalyzing) return null;
 
     return (

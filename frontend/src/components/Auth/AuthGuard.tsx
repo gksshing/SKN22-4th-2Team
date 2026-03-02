@@ -1,10 +1,10 @@
-import React, { useEffect } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { SignupForm } from './SignupForm';
 import { LoginForm } from './LoginForm';
 import { UserResponse, SignupParams, LoginParams } from '../../types/auth';
 
 interface AuthGuardProps {
-    children: React.ReactNode;
+    children: ReactNode;
     user: UserResponse | null;
     authView: 'login' | 'signup';
     setAuthView: (view: 'login' | 'signup') => void;
@@ -64,10 +64,10 @@ export const AuthGuard = (props: AuthGuardProps) => {
     }
 
     // ========== Issue #GuestAccess/Modal UX: 모달 기반 인증 가드 ==========
-    
+
     // 1. 유저 정보가 있거나 게스트 모드면 본문(children)을 항상 렌더링하고,
     // 2. 비인증 상태이거나 게스트가 아니면 배경에 모달을 띄웁니다.
-    
+
     return (
         <div className="relative min-h-screen">
             {/* 메인 서비스 콘텐츠 (항상 렌더링하여 배경으로 유지) */}
@@ -75,7 +75,7 @@ export const AuthGuard = (props: AuthGuardProps) => {
 
             {/* 인증 모달 오버레이 (로그인 전용 접근 제어) */}
             {!user && isGuest === false && (
-                <div 
+                <div
                     className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
                     aria-modal="true"
                     role="dialog"
