@@ -12,7 +12,8 @@ logger = logging.getLogger(__name__)
 async def process_analysis_stream(
     request: AnalyzeRequest,
     agent: PatentAgent,
-    history: HistoryManager
+    history: HistoryManager,
+    user_id: Optional[int] = None
 ) -> AsyncGenerator[str, None]:
     """
     Process analysis and stream results using standard SSE format (event + data).
@@ -119,7 +120,7 @@ async def process_analysis_stream(
         yield f"data: {json.dumps({'percent': 100, 'result': final_result})}\n\n"
         
         # Save to history after successful stream
-        history.save_analysis(final_result, user_id=request.user_id)
+        history.save_analysis(final_result, session_id=request.session_id, user_id=user_id)
         
     except Exception as e:
         logger.error(f"Analysis streaming failed: {e}", exc_info=True)

@@ -57,7 +57,7 @@ export function useRagStream() {
             // 백엔드 AnalyzeRequest 스키마 필드명에 맞춰 요청 Body 구성
             const reqBody = {
                 user_idea: userIdea,
-                user_id: getSessionId(), // UUID 세션 ID 사용 (Issue #24)
+                session_id: getSessionId(), // UUID 세션 ID 사용 (Issue #24)
                 use_hybrid: useHybrid,
                 ipc_filters: ipcFilters && ipcFilters.length > 0 ? ipcFilters : null,
                 stream: true,
