@@ -23,6 +23,7 @@ interface SignupFormProps {
     onSuccess: () => void;
     onNavigateToLogin: () => void;
     onSignup: (params: { email: string; password: string }) => Promise<void>;
+    onGuest?: () => void;
     isLoading?: boolean;
 }
 
@@ -36,7 +37,7 @@ interface FormErrors {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
 
-export function SignupForm({ onSuccess, onNavigateToLogin, onSignup, isLoading }: SignupFormProps) {
+export function SignupForm({ onSuccess, onNavigateToLogin, onSignup, onGuest, isLoading }: SignupFormProps) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -246,6 +247,17 @@ export function SignupForm({ onSuccess, onNavigateToLogin, onSignup, isLoading }
                             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                         ) : '계정 생성하기'}
                     </button>
+
+                    {/* 비회원 이용 (Guest Mode) — Issue #GuestAccess */}
+                    {onGuest && (
+                        <button
+                            type="button"
+                            onClick={onGuest}
+                            className="w-full py-2.5 text-gray-500 hover:text-gray-700 font-medium text-sm transition-colors"
+                        >
+                            비회원으로 이용하기 (Guest Mode)
+                        </button>
+                    )}
                 </form>
 
                 {/* 소셜 로그인 */}

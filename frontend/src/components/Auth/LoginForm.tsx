@@ -22,6 +22,7 @@ interface LoginFormProps {
     onSuccess: () => void;
     onNavigateToSignup: () => void;
     onLogin: (params: { email: string; password: string }) => Promise<void>;
+    onGuest?: () => void;
     isLoading?: boolean;
 }
 
@@ -31,7 +32,7 @@ interface FormErrors {
     submit?: string;
 }
 
-export function LoginForm({ onSuccess, onNavigateToSignup, onLogin, isLoading }: LoginFormProps) {
+export function LoginForm({ onSuccess, onNavigateToSignup, onLogin, onGuest, isLoading }: LoginFormProps) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [errors, setErrors] = useState<FormErrors>({});
@@ -168,6 +169,17 @@ export function LoginForm({ onSuccess, onNavigateToSignup, onLogin, isLoading }:
                             ? <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> 로그인 중...</>
                             : '로그인'}
                     </button>
+
+                    {/* 비회원 이용 (Guest Mode) — Issue #GuestAccess */}
+                    {onGuest && (
+                        <button
+                            type="button"
+                            onClick={onGuest}
+                            className="w-full py-2.5 text-gray-500 hover:text-gray-700 font-medium text-sm transition-colors"
+                        >
+                            비회원으로 이용하기 (Guest Mode)
+                        </button>
+                    )}
                 </form>
 
                 {/* 소셜 로그인 구분선 */}

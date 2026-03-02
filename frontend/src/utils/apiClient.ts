@@ -57,11 +57,9 @@ const AUTH_ROUTES = {
 
 /** 세션 만료 안내 후 로그인 페이지로 이동 */
 function _redirectToLogin(): void {
-    // Warning 반영: 강제 이동 전 짧은 안내 표시
+    // 안내 이벤트만 발생시키고, 실제 UI 처리는 App.tsx 등에서 담당하도록 변경 (SPA/Guest 모드 호환)
     const event = new CustomEvent('auth:session-expired');
     window.dispatchEvent(event);
-    // 즉시 이동
-    window.location.href = AUTH_ROUTES.LOGIN;
 }
 
 export default apiClient;

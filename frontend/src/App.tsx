@@ -13,6 +13,8 @@ import { SessionExpiredToast } from './components/Auth/SessionExpiredToast';
 import { AuthGuard } from './components/Auth/AuthGuard';
 import { GlobalLoading } from './components/Loading/GlobalLoading';
 import { AuthErrorToast } from './components/Auth/AuthErrorToast';
+import { LoginForm } from './components/Auth/LoginForm';
+import { SignupForm } from './components/Auth/SignupForm';
 
 
 function App() {
@@ -27,9 +29,11 @@ function App() {
     // ========== Issue #46/#48: Auth 상태 관리 ==========
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { user, isLoading: isAuthLoading, login, signup, logout, fetchMe, sessionExpiredMsg, clearSessionExpiredMsg } = useAuth();
-    /** 로그인 / 회원가입 화면 전환 상태 */
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [authView, setAuthView] = useState<'login' | 'signup'>('login');
+    /** 게스트 유저 진입 상태 (AuthGuard 제어용) — Issue #GuestAccess */
+    const [isGuest, setIsGuest] = useState<boolean>(() => {
+        return sessionStorage.getItem('isGuest') === 'true';
+    });
 
     // 세션 만료 메시지 처리
     useEffect(() => {
@@ -39,10 +43,18 @@ function App() {
         }
     }, [sessionExpiredMsg, clearSessionExpiredMsg]);
 
-    // Priority 3: 로그인/로그아웃 시 히스토리 즉시 갱신
+    // Priority 3: 로그인/로그아웃 시 히스토리 즉시 갱신 및 인증 요청 상태 초기화
     useEffect(() => {
         setRefreshCount((c: number) => c + 1);
+        if (user) {
+            setIsGuest(false);
+        }
     }, [user]);
+
+    // 게스트 상태 변경 시 sessionStorage 동기화
+    useEffect(() => {
+        sessionStorage.setItem('isGuest', isGuest.toString());
+    }, [isGuest]);
     // ================================================
 
     // RAG 분석 상태 관리 훅
@@ -93,22 +105,37 @@ function App() {
             login={login}
             signup={signup}
             fetchMe={fetchMe}
+            isGuest={isGuest}
+            setIsGuest={setIsGuest}
         >
-            <div className="min-h-screen bg-gray-50">
+            <div className="min-h-screen bg-gray-50 relative">
+
                 <header className="bg-white border-b border-gray-100 px-8 py-5 shadow-sm flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-extrabold text-blue-900">💡 쇼특허 (Short-Cut) AI</h1>
                         <p className="text-gray-500 text-sm font-medium mt-0.5">아이디어만 입력하면 AI가 실시간으로 특허 침해 여부를 분석해 드립니다.</p>
                     </div>
                     <div className="flex items-center gap-4">
-                        <span className="text-sm text-gray-600 font-medium">👤 {user?.email}</span>
-                        <button
-                            type="button"
-                            onClick={logout}
-                            className="text-xs text-red-500 hover:text-red-700 hover:underline transition-colors font-medium"
-                        >
-                            로그아웃
-                        </button>
+                        {user ? (
+                            <>
+                                <span className="text-sm text-gray-600 font-medium">👤 {user.email}</span>
+                                <button
+                                    type="button"
+                                    onClick={logout}
+                                    className="text-xs text-red-500 hover:text-red-700 hover:underline transition-colors font-medium"
+                                >
+                                    로그아웃
+                                </button>
+                            </>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => setIsGuest(false)}
+                                className="px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                            >
+                                로그인 / 회원가입
+                            </button>
+                        )}
                     </div>
                 </header>
 
@@ -159,7 +186,7 @@ function App() {
                     </section>
                 </main>
             </div>
-        </AuthGuard>
+        </AuthGuard >
     );
 }
 
