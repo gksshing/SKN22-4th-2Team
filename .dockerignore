@@ -34,6 +34,9 @@ node_modules/
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
+*.tsbuildinfo
+.eslintcache
+
 
 # ==============================
 # 테스트 / 개발 도구
