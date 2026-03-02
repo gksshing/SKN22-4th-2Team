@@ -12,11 +12,11 @@
  * - 접근성 유지: role="alert", label htmlFor, autoComplete
  */
 
-import React, { useState, useCallback, FormEvent, ChangeEvent } from 'react';
+import { useState, useCallback, FormEvent, ChangeEvent } from 'react';
 import { validateEmail, validatePassword } from '../../utils/validators';
 import { PasswordToggleInput } from './PasswordToggleInput';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 interface LoginFormProps {
     onSuccess: () => void;
