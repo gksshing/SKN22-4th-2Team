@@ -58,9 +58,10 @@ export function LoginForm({ onSuccess, onNavigateToSignup, onLogin, isLoading }:
         try {
             await onLogin({ email, password });
             onSuccess();
-        } catch (error: any) {
+        } catch (error: unknown) {
             // Toast와 정렬: 백엔드 메시지 또는 기본 메시지
-            setErrors({ submit: error.message || '아이디 또는 비밀번호를 확인해주세요.' });
+            const errorMessage = error instanceof Error ? error.message : '아이디 또는 비밀번호를 확인해주세요.';
+            setErrors({ submit: errorMessage });
         } finally {
             setIsSubmitting(false);
         }
@@ -213,7 +214,7 @@ export function LoginForm({ onSuccess, onNavigateToSignup, onLogin, isLoading }:
                                 {/* 구글 */}
                                 <button
                                     type="button"
-                                    onClick={() => window.location.href = `${API_BASE_URL}/api/v1/auth/callback/google`}
+                                    onClick={() => window.location.href = `${API_BASE_URL}/api/v1/auth/login/google`}
                                     className="flex items-center justify-center py-3 bg-white hover:bg-gray-100 rounded-xl transition-all duration-300 shadow-lg shadow-white/5 group"
                                     title="Google로 로그인"
                                 >
@@ -223,7 +224,7 @@ export function LoginForm({ onSuccess, onNavigateToSignup, onLogin, isLoading }:
                                 {/* 네이버 */}
                                 <button
                                     type="button"
-                                    onClick={() => window.location.href = `${API_BASE_URL}/api/v1/auth/callback/naver`}
+                                    onClick={() => window.location.href = `${API_BASE_URL}/api/v1/auth/login/naver`}
                                     className="flex items-center justify-center py-3 bg-[#03C75A] hover:bg-[#02b351] rounded-xl transition-all duration-300 shadow-lg shadow-green-900/20 group"
                                     title="Naver로 로그인"
                                 >
@@ -233,7 +234,7 @@ export function LoginForm({ onSuccess, onNavigateToSignup, onLogin, isLoading }:
                                 {/* 카카오 */}
                                 <button
                                     type="button"
-                                    onClick={() => window.location.href = `${API_BASE_URL}/api/v1/auth/callback/kakao`}
+                                    onClick={() => window.location.href = `${API_BASE_URL}/api/v1/auth/login/kakao`}
                                     className="flex items-center justify-center py-3 bg-[#FEE500] hover:bg-[#fada00] rounded-xl transition-all duration-300 shadow-lg shadow-yellow-900/20 group"
                                     title="Kakao로 로그인"
                                 >
