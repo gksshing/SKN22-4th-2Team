@@ -10,7 +10,7 @@ import { useAuth } from './hooks/useAuth';
 import { AuthGuard } from './components/Auth/AuthGuard';
 
 function App() {
-    const { user, login, signup, logout, fetchMe, isLoading: isAuthLoading } = useAuth();
+    const { user, login, logout } = useAuth();
     const [isGuest, setIsGuest] = useState(true);
     const [authView, setAuthView] = useState<'login' | 'signup'>('login');
 
@@ -73,15 +73,10 @@ function App() {
 
     return (
         <AuthGuard
-            user={user}
-            authView={authView}
-            setAuthView={setAuthView}
-            login={login}
-            signup={signup}
-            fetchMe={fetchMe}
-            isAuthLoading={isAuthLoading}
             isGuest={isGuest}
             setIsGuest={setIsGuest}
+            authView={authView}
+            user={user}
         >
             <div className="min-h-screen bg-gray-50 relative">
 
