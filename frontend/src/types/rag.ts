@@ -31,3 +31,24 @@ export interface RagStreamState {
     message: string;
     resultData: RagAnalysisResult | null;
 }
+
+/**
+ * SSE 스트림 이벤트 타입 정의 [Issue #51]
+ */
+export type StreamEventType = 'progress' | 'complete' | 'empty' | 'error' | 'message';
+
+/**
+ * SSE progress 이벤트 데이터 구조
+ */
+export interface StreamProgressData {
+    percent: number;
+    message: string;
+}
+
+/**
+ * SSE complete 이벤트 데이터 구조
+ */
+export interface StreamCompleteData {
+    percent: 100;
+    result: RagAnalysisResult;
+}

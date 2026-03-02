@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { RagAnalysisResult } from '../types/rag';
+import { RagAnalysisResult, StreamEventType, StreamProgressData, StreamCompleteData } from '../types/rag';
 import { getSessionId } from '../utils/session';
 import type { ErrorType } from '../components/common/ErrorFallback';
 
@@ -125,11 +125,11 @@ export function useRagStream() {
                     const eventMatch = line.match(/event:\s*([^\n]+)/);
                     const dataMatch = line.match(/data:\s*([^\n]+)/);
 
-                    let eventType = 'message';
+                    let eventType: StreamEventType = 'message';
                     let dataStr = '';
 
                     if (eventMatch && dataMatch) {
-                        eventType = eventMatch[1].trim();
+                        eventType = eventMatch[1].trim() as StreamEventType;
                         dataStr = dataMatch[1].trim();
                     } else if (line.startsWith('data:')) {
                         dataStr = line.replace('data:', '').trim();
@@ -139,18 +139,21 @@ export function useRagStream() {
                         try {
                             const parsedData = JSON.parse(dataStr);
 
-                            // 스켈레톤 초기 숨김 처리
-                            if (parsedData.percent >= 10) {
-                                setIsSkeletonVisible(false);
-                            }
+                            // event 가 progress 거나, event가 message 인데 status 필드가 있는 경우 (하위 호환성)
+                            if (eventType === 'progress' || (eventType as string === 'message' && parsedData.percent !== undefined)) {
+                                const progress = parsedData as StreamProgressData;
+                                setPercent(progress.percent || 0);
+                                setMessage(progress.message || '');
 
-                            if (eventType === 'progress') {
-                                setPercent(parsedData.percent || 0);
-                                setMessage(parsedData.message || '');
+                                // 스켈레톤 숨김 처리 (10% 이상 진행 시)
+                                if (progress.percent >= 10) {
+                                    setIsSkeletonVisible(false);
+                                }
                             } else if (eventType === 'complete') {
+                                const completion = parsedData as StreamCompleteData;
                                 setPercent(100);
                                 setMessage('분석이 모두 완료되었습니다.');
-                                setResultData(parsedData.result);
+                                setResultData(completion.result);
 
                                 setTimeout(() => {
                                     setIsAnalyzing(false);
@@ -158,11 +161,14 @@ export function useRagStream() {
                                 }, 1500);
                             } else if (eventType === 'empty' || parsedData.status === 'empty') {
                                 throw new Error('NOT_FOUND');
-                            } else if (eventType === 'error') {
-                                throw new Error('NETWORK_ERROR');
+                            } else if (eventType === 'error' || parsedData.error) {
+                                // 백엔드에서 에러 메시지를 detail 필드에 담아주는 경우 대응
+                                throw new Error(parsedData.detail || parsedData.error || 'NETWORK_ERROR');
                             }
                         } catch (e: any) {
                             if (e.message === 'NOT_FOUND' || e.message === 'NETWORK_ERROR') throw e;
+                            // 에러 필드가 있다면 해당 메시지로 throw
+                            if (e.message) throw e;
                             console.error('SSE JSON Parsing Error:', e, 'Raw Data:', dataStr);
                         }
                     }
