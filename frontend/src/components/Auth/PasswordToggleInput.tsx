@@ -13,7 +13,7 @@ interface PasswordToggleInputProps extends Omit<InputHTMLAttributes<HTMLInputEle
     hasError?: boolean;
 }
 
-export function PasswordToggleInput({ hasError = false, className: _, ...rest }: PasswordToggleInputProps) {
+export function PasswordToggleInput({ hasError = false, className = '', ...rest }: PasswordToggleInputProps) {
     const [isVisible, setIsVisible] = useState(false);
 
     const inputClass = `w-full pl-4 pr-12 py-3 rounded-xl border-2 text-gray-800 placeholder-gray-400
@@ -22,7 +22,7 @@ export function PasswordToggleInput({ hasError = false, className: _, ...rest }:
             ? 'border-red-400 bg-red-50 focus:border-red-500'
             : 'border-gray-200 bg-gray-50 focus:border-blue-500 focus:bg-white'
         }
-        disabled:opacity-50 disabled:cursor-not-allowed`;
+        disabled:opacity-50 disabled:cursor-not-allowed ${className}`;
 
     return (
         <div className="relative">

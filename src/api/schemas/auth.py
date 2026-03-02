@@ -13,6 +13,7 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     """Schema for user registration."""
     password: str
+    session_id: Optional[str] = None
 
 class UserLogin(UserBase):
     """Schema for user login."""

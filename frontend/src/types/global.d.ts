@@ -10,6 +10,16 @@ declare global {
             VITE_API_URL?: string;
         };
     }
+
+    interface ImportMeta {
+        readonly env: ImportMetaEnv;
+    }
+
+    interface ImportMetaEnv {
+        readonly VITE_API_BASE_URL?: string;
+        readonly VITE_API_URL?: string;
+        [key: string]: any;
+    }
 }
 
 // 이 파일이 모듈로 처리되도록 빈 export 추가

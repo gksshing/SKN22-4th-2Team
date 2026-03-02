@@ -151,9 +151,9 @@ export function useRagStream() {
             clearTimeout(timeoutId);
 
             // AbortController.abort() 발생 시
-            if (error.name === 'AbortError' || error.message === 'TIMEOUT' || (error.cause && error.cause.message === 'TIMEOUT')) {
+            if (error.name === 'AbortError' || error.message === 'TIMEOUT' || (error as any).cause?.message === 'TIMEOUT') {
                 // DOMException AbortError가 타임아웃 타이머에 의해 트리거된 경우를 명시적으로 체킹하기엔 어렵지만 name 또는 custom error throw 패턴
-                if (error.message === 'TIMEOUT' || (error.cause && error.cause.message === 'TIMEOUT')) {
+                if (error.message === 'TIMEOUT' || (error as any).cause?.message === 'TIMEOUT') {
                     setErrorInfo({
                         title: '분석 시간 초과 (Timeout) ⏱️',
                         message: '분석에 시간이 초과되었습니다. 입력을 줄여서 다시 시도해 주세요.'

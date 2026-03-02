@@ -35,6 +35,21 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
     try:
         db.commit()
         db.refresh(new_user)
+        
+        # 브라우저 세션과 사용자 계정 연동 (회원가입 시에도 히스토리 보존)
+        if user_in.session_id:
+            try:
+                existing_session = db.query(UserSession).filter(UserSession.session_id == user_in.session_id).first()
+                if existing_session:
+                    existing_session.user_id = new_user.id
+                else:
+                    new_session = UserSession(session_id=user_in.session_id, user_id=new_user.id)
+                    db.add(new_session)
+                db.commit()
+                logger.info(f"Linked session {user_in.session_id} to new user {new_user.email}")
+            except Exception as e:
+                db.rollback()
+                logger.error(f"Failed to link session during registration: {e}")
     except Exception as e:
         db.rollback()
         logger.error(f"User registration failed: {str(e)}")

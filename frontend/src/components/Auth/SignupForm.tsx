@@ -250,7 +250,13 @@ export function SignupForm({ onSuccess, onNavigateToLogin, onSignup, isLoading }
                                         <input
                                             type="checkbox"
                                             checked={termsAgreed}
-                                            onChange={(e: ChangeEvent<HTMLInputElement>) => setTermsAgreed(e.target.checked)}
+                                            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                                                const checked = e.target.checked;
+                                                setTermsAgreed(checked);
+                                                if (checked) {
+                                                    setErrors((prev) => ({ ...prev, terms: undefined }));
+                                                }
+                                            }}
                                             disabled={isDisabled}
                                             className="w-5 h-5 rounded-lg border-white/20 bg-white/10 text-blue-600 focus:ring-blue-500 cursor-pointer transition-all"
                                         />
