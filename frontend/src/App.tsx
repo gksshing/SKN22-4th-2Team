@@ -10,7 +10,7 @@ import { useAuth } from './hooks/useAuth';
 import { AuthGuard } from './components/Auth/AuthGuard';
 
 function App() {
-    const { user, login, logout } = useAuth();
+    const { user, logout } = useAuth();
     const [isGuest, setIsGuest] = useState(true);
     const [authView, setAuthView] = useState<'login' | 'signup'>('login');
 
