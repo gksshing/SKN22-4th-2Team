@@ -9,7 +9,9 @@
 import axios, { AxiosInstance } from 'axios';
 import { getSessionId } from './session';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
+// [운영 장애 대응] VITE_API_BASE_URL이 없으면 상대 경로('/')를 사용하여 동일 오리진 서버와 통신합니다.
+// 개발 환경(.env)에서만 http://localhost:8000 등을 명시적으로 설정해서 사용하세요.
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 /** Axios 인스턴스 (Singleton) */
 const apiClient: AxiosInstance = axios.create({
