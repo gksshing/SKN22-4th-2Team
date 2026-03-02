@@ -37,6 +37,7 @@ export function PasswordStrengthBar({ password }: PasswordStrengthBarProps) {
     if (!password) return null;
 
     return (
+        <div className="space-y-1.5">
             <div className="flex gap-1 h-1">
                 {[1, 2, 3, 4].map((level) => (
                     <div

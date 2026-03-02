@@ -63,39 +63,43 @@ export const AuthGuard = (props: AuthGuardProps) => {
         );
     }
 
-    // 인증 완료 시 메인 기능 표시 (인증 정보가 없어도 일단 진입 허용)
-    // return <>{children}</>;
-
-    // ========== Issue #GuestAccess: 인증 가드 복구 및 게스트 우회 ==========
-    // 1. 유저 정보가 있으면 바로 진입
-    if (user) {
-        return <>{children}</>;
-    }
-
-    // 2. 게스트 모드를 선택했으면 진입 허용 (단, App.tsx에서 로그인 요청 시 가드 재작동을 위해 props로 제어 가능하도록 설계 가능)
-    if (isGuest) {
-        return <>{children}</>;
-    }
-
-    // 3. 인증되지 않았고 게스트 모드도 아니면Auth 화면 표시 (주석 해제 요청 반영)
+    // ========== Issue #GuestAccess/Modal UX: 모달 기반 인증 가드 ==========
+    
+    // 1. 유저 정보가 있거나 게스트 모드면 본문(children)을 항상 렌더링하고,
+    // 2. 비인증 상태이거나 게스트가 아니면 배경에 모달을 띄웁니다.
+    
     return (
-        <div className="auth-entry-wrapper">
-            {authView === 'signup' ? (
-                <SignupForm
-                    onSuccess={() => setAuthView('login')}
-                    onNavigateToLogin={() => setAuthView('login')}
-                    onSignup={signup}
-                    onGuest={() => setIsGuest(true)}
-                    isLoading={isAuthLoading}
-                />
-            ) : (
-                <LoginForm
-                    onSuccess={fetchMe}
-                    onNavigateToSignup={() => setAuthView('signup')}
-                    onLogin={login}
-                    onGuest={() => setIsGuest(true)}
-                    isLoading={isAuthLoading}
-                />
+        <div className="relative min-h-screen">
+            {/* 메인 서비스 콘텐츠 (항상 렌더링하여 배경으로 유지) */}
+            {children}
+
+            {/* 인증 모달 오버레이 (비로그인 & !isGuest 상태일 때만 표시) */}
+            {!user && !isGuest && (
+                <div 
+                    className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
+                    aria-modal="true"
+                    role="dialog"
+                >
+                    <div className="w-full max-w-md p-4 animate-in zoom-in-95 duration-300">
+                        {authView === 'signup' ? (
+                            <SignupForm
+                                onSuccess={() => setAuthView('login')}
+                                onNavigateToLogin={() => setAuthView('login')}
+                                onSignup={signup}
+                                onGuest={() => setIsGuest(true)}
+                                isLoading={isAuthLoading}
+                            />
+                        ) : (
+                            <LoginForm
+                                onSuccess={fetchMe}
+                                onNavigateToSignup={() => setAuthView('signup')}
+                                onLogin={login}
+                                onGuest={() => setIsGuest(true)}
+                                isLoading={isAuthLoading}
+                            />
+                        )}
+                    </div>
+                </div>
             )}
         </div>
     );
