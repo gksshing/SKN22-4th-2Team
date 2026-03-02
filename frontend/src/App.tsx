@@ -108,7 +108,7 @@ function App() {
 
                 <header className="bg-white border-b border-gray-100 px-8 py-5 shadow-sm flex items-center justify-between">
                     <div>
-                        <h1 className="text-2xl font-extrabold text-blue-900">💡 쇼특허 (Short-Cut) AI</h1>
+                        <h1 className="text-2xl font-extrabold text-blue-900">💡 쇼특허 (Short-Cut) AI.</h1>
                         <p className="text-gray-500 text-sm font-medium mt-0.5">아이디어만 입력하면 AI가 실시간으로 특허 침해 여부를 분석해 드립니다.</p>
                     </div>
 
