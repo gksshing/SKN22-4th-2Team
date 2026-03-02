@@ -38,6 +38,11 @@ function App() {
             clearSessionExpiredMsg();
         }
     }, [sessionExpiredMsg, clearSessionExpiredMsg]);
+
+    // Priority 3: 로그인/로그아웃 시 히스토리 즉시 갱신
+    useEffect(() => {
+        setRefreshCount((c: number) => c + 1);
+    }, [user]);
     // ================================================
 
     // RAG 분석 상태 관리 훅

@@ -36,7 +36,6 @@ export function HistorySidebar({ onSelectIdea, isAnalyzing, refreshTrigger }: Hi
         const sessionId = getSessionId();
         try {
             const queryParams = new URLSearchParams({
-                user_id: sessionId,
                 ...(keyword && { keyword }),
                 ...(sortBy && { sort_by: sortBy })
             });

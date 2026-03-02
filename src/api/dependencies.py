@@ -27,7 +27,7 @@ def get_patent_agent() -> PatentAgent:
     return _patent_agent
 
 def get_current_user(request: Request) -> str:
-    """Extracts user identity from the access_token cookie."""
+    """Extracts user identity from the access_token cookie. (Strict)"""
     token = request.cookies.get("access_token")
     if not token:
         logger.warning("Access token missing in cookies.")
@@ -54,6 +54,20 @@ def get_current_user(request: Request) -> str:
         )
     
     return email
+
+def get_current_user_optional(request: Request) -> str | None:
+    """Extracts user identity from the access_token cookie. (Optional)"""
+    token = request.cookies.get("access_token")
+    if not token:
+        return None
+    
+    try:
+        payload = decode_token(token)
+        if not payload or payload.get("type") != "access":
+            return None
+        return payload.get("sub")
+    except Exception:
+        return None
 
 def get_history_manager(db: Session = Depends(get_db)) -> HistoryManager:
     """Provides a HistoryManager instance with the active DB session."""
