@@ -1,6 +1,7 @@
-email: string;
-password: string;
-sessionId ?: string;
+export interface SignupParams {
+    email: string;
+    password: string;
+    sessionId?: string;
 }
 
 export interface UserResponse {
@@ -13,7 +14,6 @@ export interface LoginResponse {
     user: UserResponse;
 }
 
-export interface SignupParams {
 export interface LoginParams {
     email: string;
     password: string;
