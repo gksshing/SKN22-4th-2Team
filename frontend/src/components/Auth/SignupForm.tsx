@@ -34,6 +34,8 @@ interface FormErrors {
     submit?: string;
 }
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
+
 export function SignupForm({ onSuccess, onNavigateToLogin, onSignup, isLoading }: SignupFormProps) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -290,9 +292,52 @@ export function SignupForm({ onSuccess, onNavigateToLogin, onSignup, isLoading }
                             </button>
                         </form>
 
-                        {/* 로그인 링크 */}
-                        <div className="mt-10 pt-8 border-t border-white/10 text-center">
-                            <p className="text-sm text-blue-100/50 font-medium">
+                        {/* 로그인 링크 및 소셜 로그인 */}
+                        <div className="mt-8 pt-6 border-t border-white/10">
+                            <div className="relative mb-6">
+                                <div className="absolute inset-0 flex items-center">
+                                    <div className="w-full border-t border-white/5"></div>
+                                </div>
+                                <div className="relative flex justify-center text-xs uppercase">
+                                    <span className="bg-[#0f172a] px-3 text-blue-100/30 font-bold tracking-widest">또는 간편 회원가입</span>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-3">
+                                {/* 구글 */}
+                                <button
+                                    type="button"
+                                    onClick={() => window.location.href = `${API_BASE_URL}/api/v1/auth/callback/google`}
+                                    className="flex items-center justify-center py-3 bg-white hover:bg-gray-100 rounded-xl transition-all duration-300 shadow-lg shadow-white/5 group"
+                                    title="Google로 회원가입"
+                                >
+                                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                                </button>
+
+                                {/* 네이버 */}
+                                <button
+                                    type="button"
+                                    onClick={() => window.location.href = `${API_BASE_URL}/api/v1/auth/callback/naver`}
+                                    className="flex items-center justify-center py-3 bg-[#03C75A] hover:bg-[#02b351] rounded-xl transition-all duration-300 shadow-lg shadow-green-900/20 group"
+                                    title="Naver로 회원가입"
+                                >
+                                    <span className="text-white font-black text-lg group-hover:scale-110 transition-transform">N</span>
+                                </button>
+
+                                {/* 카카오 */}
+                                <button
+                                    type="button"
+                                    onClick={() => window.location.href = `${API_BASE_URL}/api/v1/auth/callback/kakao`}
+                                    className="flex items-center justify-center py-3 bg-[#FEE500] hover:bg-[#fada00] rounded-xl transition-all duration-300 shadow-lg shadow-yellow-900/20 group"
+                                    title="Kakao로 회원가입"
+                                >
+                                    <svg viewBox="0 0 24 24" className="w-5 h-5 fill-[#191919] group-hover:scale-110 transition-transform">
+                                        <path d="M12 3c-4.97 0-9 3.185-9 7.115 0 2.553 1.706 4.8 4.27 6.054-.15.529-.544 1.923-.622 2.233-.098.397.13.392.274.301.114-.072 1.83-1.243 2.56-1.743.488.068.99.103 1.518.103 4.97 0 9-3.185 9-7.115S16.97 3 12 3z" />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <p className="mt-8 text-sm text-blue-100/50 text-center font-medium">
                                 이미 계정이 있으신가요?{' '}
                                 <button type="button" onClick={onNavigateToLogin}
                                     className="font-bold text-blue-400 hover:text-blue-300 hover:underline transition-all underline-offset-4">

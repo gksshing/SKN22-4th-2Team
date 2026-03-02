@@ -327,6 +327,21 @@ class AuthConfig:
     access_token_expire_minutes: int = field(default_factory=lambda: int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "30")))
     refresh_token_expire_minutes: int = field(default_factory=lambda: int(os.environ.get("REFRESH_TOKEN_EXPIRE_MINUTES", "1440")))
 
+@dataclass
+class SocialAuthConfig:
+    """OAuth2 Social Login configuration."""
+    google_client_id: Optional[str] = field(default_factory=lambda: os.environ.get("GOOGLE_CLIENT_ID"))
+    google_client_secret: Optional[str] = field(default_factory=lambda: os.environ.get("GOOGLE_CLIENT_SECRET"))
+    google_redirect_uri: Optional[str] = field(default_factory=lambda: os.environ.get("GOOGLE_REDIRECT_URI"))
+    
+    naver_client_id: Optional[str] = field(default_factory=lambda: os.environ.get("NAVER_CLIENT_ID"))
+    naver_client_secret: Optional[str] = field(default_factory=lambda: os.environ.get("NAVER_CLIENT_SECRET"))
+    naver_redirect_uri: Optional[str] = field(default_factory=lambda: os.environ.get("NAVER_REDIRECT_URI"))
+    
+    kakao_client_id: Optional[str] = field(default_factory=lambda: os.environ.get("KAKAO_CLIENT_ID"))
+    kakao_client_secret: Optional[str] = field(default_factory=lambda: os.environ.get("KAKAO_CLIENT_SECRET"))
+    kakao_redirect_uri: Optional[str] = field(default_factory=lambda: os.environ.get("KAKAO_REDIRECT_URI"))
+
 # =============================================================================
 # Logging Configuration
 # =============================================================================
@@ -364,6 +379,7 @@ class PatentGuardConfig:
     agent: AgentConfig = field(default_factory=AgentConfig)
     pipeline: PipelineConfig = field(default_factory=PipelineConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
+    social_auth: SocialAuthConfig = field(default_factory=SocialAuthConfig)
 
 
 # =============================================================================
@@ -431,6 +447,28 @@ def update_config_from_env() -> PatentGuardConfig:
         config.agent.dense_weight = float(os.environ["DENSE_WEIGHT"])
     if os.environ.get("SPARSE_WEIGHT"):
         config.agent.sparse_weight = float(os.environ["SPARSE_WEIGHT"])
+
+    # Social Auth
+    if os.environ.get("GOOGLE_CLIENT_ID"):
+        config.social_auth.google_client_id = os.environ["GOOGLE_CLIENT_ID"]
+    if os.environ.get("GOOGLE_CLIENT_SECRET"):
+        config.social_auth.google_client_secret = os.environ["GOOGLE_CLIENT_SECRET"]
+    if os.environ.get("GOOGLE_REDIRECT_URI"):
+        config.social_auth.google_redirect_uri = os.environ["GOOGLE_REDIRECT_URI"]
+    
+    if os.environ.get("NAVER_CLIENT_ID"):
+        config.social_auth.naver_client_id = os.environ["NAVER_CLIENT_ID"]
+    if os.environ.get("NAVER_CLIENT_SECRET"):
+        config.social_auth.naver_client_secret = os.environ["NAVER_CLIENT_SECRET"]
+    if os.environ.get("NAVER_REDIRECT_URI"):
+        config.social_auth.naver_redirect_uri = os.environ["NAVER_REDIRECT_URI"]
+        
+    if os.environ.get("KAKAO_CLIENT_ID"):
+        config.social_auth.kakao_client_id = os.environ["KAKAO_CLIENT_ID"]
+    if os.environ.get("KAKAO_CLIENT_SECRET"):
+        config.social_auth.kakao_client_secret = os.environ["KAKAO_CLIENT_SECRET"]
+    if os.environ.get("KAKAO_REDIRECT_URI"):
+        config.social_auth.kakao_redirect_uri = os.environ["KAKAO_REDIRECT_URI"]
 
     return config
 
