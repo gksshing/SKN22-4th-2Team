@@ -50,10 +50,6 @@ apiClient.interceptors.response.use(
     }
 );
 
-/** 인증 관련 경로 상수 — 경로 변경 시 이 곳만 수정 */
-const AUTH_ROUTES = {
-    LOGIN: '/login',
-} as const;
 
 /** 세션 만료 안내 후 로그인 페이지로 이동 */
 function _redirectToLogin(): void {
