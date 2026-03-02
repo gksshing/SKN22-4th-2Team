@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
 from src.patent_agent import PatentAgent
 from src.history_manager import HistoryManager
 from src.api.schemas.request import AnalyzeRequest
