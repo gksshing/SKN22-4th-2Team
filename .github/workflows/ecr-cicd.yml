@@ -253,17 +253,16 @@ jobs:
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           task-definition: ${{ steps.task-def.outputs.task-definition }}
-          service: short-cut-api-service-alb
-          cluster: short-cut-prod-cluster
-          # 새 태스크가 완전히 안정적이 될 때까지 대기 (타임아웃: 10분)
-          wait-for-service-stability: true
+          service: ${{ secrets.ECS_SERVICE_PROD }}
+          cluster: ${{ secrets.ECS_CLUSTER_PROD }}
+          wait-for-service-stability: false
 
       # ── 5. 배포 결과 요약 ─────────────────────────────────────────────────
       - name: 배포 결과 요약
         run: |
           echo "## 🚀 ECS Production 배포 완료" >> $GITHUB_STEP_SUMMARY
           echo "| 항목 | 값 |" >> $GITHUB_STEP_SUMMARY
-          echo "| 클러스터 | \`short-cut-prod-cluster\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| 서비스 | \`short-cut-api-service-alb\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| 클러스터 | \`${{ secrets.ECS_CLUSTER_PROD }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| 서비스 | \`${{ secrets.ECS_SERVICE_PROD }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| ALB URL | \`short-cut-alb-183482512.ap-northeast-2.elb.amazonaws.com\` |" >> $GITHUB_STEP_SUMMARY
           echo "| 배포 이미지 | \`${{ needs.build-and-push-production.outputs.image-tag }}\` |" >> $GITHUB_STEP_SUMMARY

@@ -4,7 +4,9 @@ from typing import Any
 
 from src.api.schemas.request import AnalyzeRequest
 from src.api.schemas.response import HistoryResponse
-from src.api.dependencies import get_patent_agent, get_history_manager
+from src.api.dependencies import get_current_user_optional, get_patent_agent, get_history_manager, get_db
+from sqlalchemy.orm import Session
+from src.database.models import User
 from src.api.services.analyze_service import process_analysis_stream
 from src.patent_agent import PatentAgent
 from src.history_manager import HistoryManager
@@ -18,15 +20,20 @@ router = APIRouter()
 async def analyze_patent(
     request: AnalyzeRequest,
     req: Request,
+    current_user_email: str | None = Depends(get_current_user_optional),
     agent: PatentAgent = Depends(get_patent_agent),
-    history: HistoryManager = Depends(get_history_manager)
+    history: HistoryManager = Depends(get_history_manager),
+    db: Session = Depends(get_db)
 ):
     try:
+        user = db.query(User).filter(User.email == current_user_email).first()
+        user_id = user.id if user else None
+
         # Check if streaming is requested
         if request.stream:
             # We use text/event-stream for SSE
             return StreamingResponse(
-                process_analysis_stream(request, agent, history),
+                process_analysis_stream(request, agent, history, user_id=user_id),
                 media_type="text/event-stream"
             )
         else:
@@ -37,8 +44,8 @@ async def analyze_patent(
                 stream=False,
                 ipc_filters=request.ipc_filters
             )
-            # Save history
-            history.save_analysis(result, user_id=request.user_id)
+            # Save history (session_id = request.session_id, user_id = user_id)
+            history.save_analysis(result, session_id=request.session_id, user_id=user_id)
             return result
     except Exception as e:
         logger.error(f"[v51c8a7b] Error during analysis: {e}", exc_info=True)
@@ -46,13 +53,30 @@ async def analyze_patent(
 
 @router.get("/history", summary="과거 검색 기록 조회", response_model=HistoryResponse)
 async def get_history(
-    user_id: str = Query(default="anonymous", description="사용자 식별자(Session ID)"),
+    req: Request,
     limit: int = Query(20, description="최대 조회 개수"),
-    history: HistoryManager = Depends(get_history_manager)
+    current_user_email: str | None = Depends(get_current_user_optional),
+    history: HistoryManager = Depends(get_history_manager),
+    db: Session = Depends(get_db)
 ):
     try:
-        history_items = history.load_recent(user_id=user_id, limit=limit)
-        return HistoryResponse(user_id=user_id, history=history_items)
+        user_id = None
+        if current_user_email:
+            user = db.query(User).filter(User.email == current_user_email).first()
+            if user:
+                user_id = user.id
+        
+        # If not logged in, fetch by session_id (X-Session-ID header)
+        session_id = None
+        if not user_id:
+            session_id = req.headers.get("X-Session-ID")
+            if not session_id:
+                # Fallback to user_id in request body if somehow provided for history
+                # But headers are preferred
+                return HistoryResponse(user_id="anonymous", history=[])
+
+        history_items = history.load_recent(user_id=user_id, session_id=session_id, limit=limit)
+        return HistoryResponse(user_id=current_user_email or "anonymous", history=history_items)
     except Exception as e:
-        logger.error(f"[v51c8a7b] Error retrieving history for {user_id}: {e}", exc_info=True)
+        logger.error(f"[v51c8a7b] Error retrieving history for {current_user_email}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to retrieve history")

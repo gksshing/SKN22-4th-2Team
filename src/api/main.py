@@ -98,12 +98,16 @@ def create_app() -> FastAPI:
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
     # 3. 미들웨어 추가 (순서는 나중에 등록한 것이 먼저 실행됨)
-    # CORS 도메인은 환경변수 또는 로컬호스트로 제한하여 보안 설정 원복 방지
-    allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
+    # CORS 설정: Vite 개발 서버(5173) 및 기존 3000 포트 허용
+    allowed_origins = os.getenv(
+        "ALLOWED_ORIGINS", 
+        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173"
+    ).split(",")
+    
     app.add_middleware(
         CORSMiddleware,
         allow_origins=allowed_origins,
-        allow_credentials=True,
+        allow_credentials=True,  # 쿠키 전달을 위해 반드시 True 설정
         allow_methods=["*"],
         allow_headers=["*"],
     )
@@ -169,8 +173,6 @@ def create_app() -> FastAPI:
             return FileResponse(index_file)
         return {"message": "Frontend index.html not found", "error": "ConfigurationError"}
 
-    app.mount("/", StaticFiles(directory=frontend_dir), name="frontend")
-
     @app.get("/health")
     async def health_check():
         return {
@@ -179,7 +181,7 @@ def create_app() -> FastAPI:
             "build_branch": os.getenv("GIT_BRANCH", "unknown"),
         }
 
-    app.mount("/", StaticFiles(directory="frontend"), name="frontend")
+    app.mount("/", StaticFiles(directory=frontend_dir), name="frontend")
 
     return app
 

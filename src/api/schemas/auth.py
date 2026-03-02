@@ -17,6 +17,7 @@ class UserCreate(UserBase):
 class UserLogin(UserBase):
     """Schema for user login."""
     password: str
+    session_id: Optional[str] = None
 
 class UserResponse(UserBase):
     """Schema for user response (safe data)."""

@@ -6,6 +6,45 @@
   .skeleton-loader {
     @apply bg-[linear-gradient(to_right,rgba(255,255,255,0),rgba(255,255,255,0.5)_50%,rgba(255,255,255,0)_80%),#e0e0e0] bg-[length:50px_200px] bg-no-repeat rounded animate-shine mb-2;
   }
+
+  @keyframes reverse-spin {
+    from { transform: rotate(360deg); }
+    to { transform: rotate(0deg); }
+  }
+  .animate-reverse-spin {
+    animation: reverse-spin 1.5s linear infinite;
+  }
+
+  @keyframes loading-bar {
+    0% { transform: scaleX(0); }
+    50% { transform: scaleX(0.5); }
+    100% { transform: scaleX(1); }
+  }
+  .animate-loading-bar {
+    animation: loading-bar 2s ease-in-out infinite;
+  }
+
+  /* Glassmorphism Utilities */
+  .glass-panel {
+    @apply bg-white/70 backdrop-blur-xl border border-white/30 shadow-[0_8px_32px_0_rgba(31,38,135,0.37)];
+  }
+
+  .glass-input {
+    @apply bg-white/50 backdrop-blur-md border-white/20 focus:bg-white/80 focus:border-blue-400/50 transition-all duration-300;
+  }
+
+  .text-glow {
+    text-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+  }
+
+  @keyframes float {
+    0% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-20px) rotate(2deg); }
+    100% { transform: translateY(0px) rotate(0deg); }
+  }
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
 }
 
 body {

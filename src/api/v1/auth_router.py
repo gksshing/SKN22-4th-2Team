@@ -1,10 +1,11 @@
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from sqlalchemy.orm import Session
 from src.database.connection import get_db
-from src.database.models import User
+from src.database.models import User, UserSession
 from src.api.schemas.auth import UserCreate, UserLogin, UserResponse, Token
 from src.api.services.security import get_password_hash, verify_password, create_access_token, create_refresh_token
+from src.api.dependencies import get_current_user
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -43,10 +44,10 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
     
     return new_user
 
-@router.post("/login", response_model=Token)
+@router.post("/login")
 @limiter.limit("5/minute")
-def login(request: Request, user_in: UserLogin, db: Session = Depends(get_db)):
-    """Authenticate user and return tokens."""
+def login(request: Request, response: Response, user_in: UserLogin, db: Session = Depends(get_db)):
+    """Authenticate user and issue JWTs via Set-Cookie (HttpOnly, Secure)."""
     user = db.query(User).filter(User.email == user_in.email).first()
     if not user or not verify_password(user_in.password, user.hashed_password):
         raise HTTPException(
@@ -65,8 +66,65 @@ def login(request: Request, user_in: UserLogin, db: Session = Depends(get_db)):
     access_token = create_access_token(data={"sub": user.email})
     refresh_token = create_refresh_token(data={"sub": user.email})
     
+    # 1. Access Token Cookie 설정 (HttpOnly, Secure, SameSite=Lax)
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=True,  # HTTPS 환경에서만 전송됨
+        samesite="lax",
+        max_age=3600  # 1시간
+    )
+    
+    # 2. Refresh Token Cookie 설정
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=86400 * 7  # 7일
+    )
+    
+    # 3. 브라우저 세션과 사용자 계정 연동 (Priority 2)
+    if user_in.session_id:
+        try:
+            existing_session = db.query(UserSession).filter(UserSession.session_id == user_in.session_id).first()
+            if existing_session:
+                existing_session.user_id = user.id
+            else:
+                new_session = UserSession(session_id=user_in.session_id, user_id=user.id)
+                db.add(new_session)
+            db.commit()
+            logger.info(f"Linked session {user_in.session_id} to user {user.email}")
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Failed to link session to user: {e}")
+            # 인증 자체는 성공했으므로 에러를 던지지는 않음 (히스토리 연동만 실패)
+
     return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer"
+        "status": "success",
+        "message": "로그인에 성공하였습니다.",
+        "user": {
+            "id": user.id,
+            "email": user.email
+        }
     }
+
+@router.get("/me", response_model=UserResponse)
+def get_me(current_user: str = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get current logged in user information."""
+    user = db.query(User).filter(User.email == current_user).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="사용자를 찾을 수 없습니다."
+        )
+    return user
+
+@router.post("/logout")
+def logout(response: Response):
+    """Logout by clearing cookies."""
+    response.delete_cookie(key="access_token")
+    response.delete_cookie(key="refresh_token")
+    return {"status": "success", "message": "로그아웃 되었습니다."}

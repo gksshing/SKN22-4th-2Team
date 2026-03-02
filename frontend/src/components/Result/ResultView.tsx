@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { downloadPdfFromElement } from '../../utils/exportPdf';
+import { getSessionId } from '../../utils/session';
 import { PatentContext, RagAnalysisResult } from '../../types/rag';
 import { SimilarityBarChart } from './SimilarityBarChart';
 
@@ -66,6 +67,36 @@ function PatentCard({ patent }: { patent: PatentContext }) {
 export function ResultView({ idea, resultData, onReset }: ResultViewProps) {
     const reportRef = useRef<HTMLDivElement>(null);
     const [isExporting, setIsExporting] = useState(false);
+    const [isEmailing, setIsEmailing] = useState(false);
+
+    const handleEmailResult = async () => {
+        setIsEmailing(true);
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+            const res = await fetch(`${apiUrl}/api/v1/notify/email`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Session-ID': getSessionId() || '',
+                },
+                body: JSON.stringify({
+                    idea: idea,
+                    resultData: resultData
+                })
+            });
+
+            if (res.ok) {
+                alert("이메일 발송 요청이 성공적으로 처리되었습니다.");
+            } else {
+                alert("이메일 발송에 실패했습니다.");
+            }
+        } catch (error) {
+            console.error("이메일 발송 오류:", error);
+            alert("이메일 발송 중 오류가 발생했습니다.");
+        } finally {
+            setIsEmailing(false);
+        }
+    };
 
     const handleDownloadPdf = async () => {
         setIsExporting(true);
@@ -161,8 +192,16 @@ export function ResultView({ idea, resultData, onReset }: ResultViewProps) {
                         <button
                             onClick={handleDownloadPdf}
                             className="px-8 py-4 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 hover:border-blue-300 hover:text-blue-700 transition-all flex justify-center items-center shadow-sm"
+                            disabled={isEmailing}
                         >
-                            <span className="mr-2 text-xl">📥</span> PDF 리포트 파일로 보관
+                            <span className="mr-2 text-xl">📥</span> PDF 리포트
+                        </button>
+                        <button
+                            onClick={handleEmailResult}
+                            className="px-8 py-4 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 hover:border-green-300 hover:text-green-700 transition-all flex justify-center items-center shadow-sm"
+                            disabled={isEmailing}
+                        >
+                            <span className="mr-2 text-xl">✉️</span> {isEmailing ? '전송 중...' : '결과 이메일로 받기'}
                         </button>
                         <button
                             onClick={onReset}
