@@ -313,7 +313,7 @@ export function SignupForm({ onSuccess, onNavigateToLogin, onSignup, isLoading }
                                 {/* 구글 */}
                                 <button
                                     type="button"
-                                    onClick={() => window.location.href = `${API_BASE_URL}/api/v1/auth/callback/google`}
+                                    onClick={() => window.location.href = `${API_BASE_URL}/api/v1/auth/login/google`}
                                     className="flex items-center justify-center py-3 bg-white hover:bg-gray-100 rounded-xl transition-all duration-300 shadow-lg shadow-white/5 group"
                                     title="Google로 회원가입"
                                 >
@@ -323,7 +323,7 @@ export function SignupForm({ onSuccess, onNavigateToLogin, onSignup, isLoading }
                                 {/* 네이버 */}
                                 <button
                                     type="button"
-                                    onClick={() => window.location.href = `${API_BASE_URL}/api/v1/auth/callback/naver`}
+                                    onClick={() => window.location.href = `${API_BASE_URL}/api/v1/auth/login/naver`}
                                     className="flex items-center justify-center py-3 bg-[#03C75A] hover:bg-[#02b351] rounded-xl transition-all duration-300 shadow-lg shadow-green-900/20 group"
                                     title="Naver로 회원가입"
                                 >
@@ -333,7 +333,7 @@ export function SignupForm({ onSuccess, onNavigateToLogin, onSignup, isLoading }
                                 {/* 카카오 */}
                                 <button
                                     type="button"
-                                    onClick={() => window.location.href = `${API_BASE_URL}/api/v1/auth/callback/kakao`}
+                                    onClick={() => window.location.href = `${API_BASE_URL}/api/v1/auth/login/kakao`}
                                     className="flex items-center justify-center py-3 bg-[#FEE500] hover:bg-[#fada00] rounded-xl transition-all duration-300 shadow-lg shadow-yellow-900/20 group"
                                     title="Kakao로 회원가입"
                                 >
