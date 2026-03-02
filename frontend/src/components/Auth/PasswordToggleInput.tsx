@@ -6,7 +6,7 @@
  * - LoginForm, SignupForm에서 공통 사용
  */
 
-import { useState, InputHTMLAttributes } from 'react';
+import React, { useState, InputHTMLAttributes } from 'react';
 
 interface PasswordToggleInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
     /** 에러 상태 여부 — 빨간 테두리 적용 */
@@ -16,16 +16,13 @@ interface PasswordToggleInputProps extends Omit<InputHTMLAttributes<HTMLInputEle
 export function PasswordToggleInput({ hasError = false, className = '', ...rest }: PasswordToggleInputProps) {
     const [isVisible, setIsVisible] = useState(false);
 
-    const inputClass = `w-full pl-4 pr-12 py-3 rounded-xl border-2 text-gray-800 placeholder-gray-400
+    const inputClass = `w-full px-4 py-3 text-gray-800 placeholder-gray-400
         focus:outline-none transition-colors
-        ${hasError
-            ? 'border-red-400 bg-red-50 focus:border-red-500'
-            : 'border-gray-200 bg-gray-50 focus:border-blue-500 focus:bg-white'
-        }
+        bg-transparent
         disabled:opacity-50 disabled:cursor-not-allowed ${className}`;
 
     return (
-        <div className="relative">
+        <div className="relative w-full flex items-center">
             <input
                 {...rest}
                 type={isVisible ? 'text' : 'password'}
@@ -36,11 +33,11 @@ export function PasswordToggleInput({ hasError = false, className = '', ...rest 
                 type="button"
                 aria-label={isVisible ? '비밀번호 숨기기' : '비밀번호 표시'}
                 onClick={() => setIsVisible((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2
+                className="absolute right-0 top-1/2 -translate-y-1/2
                     text-gray-400 hover:text-gray-600 transition-colors
-                    focus:outline-none text-lg"
+                    focus:outline-none text-[13px] font-bold pr-2"
             >
-                {isVisible ? '🙈' : '👁️'}
+                {isVisible ? '숨김' : '표시'}
             </button>
         </div>
     );

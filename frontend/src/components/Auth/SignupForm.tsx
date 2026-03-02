@@ -10,7 +10,7 @@
  * - 회원가입 성공 → 1.5초 성공 메시지 → onNavigateToLogin 호출
  */
 
-import { useState, useCallback, FormEvent, ChangeEvent } from 'react';
+import React, { useState, useCallback, FormEvent, ChangeEvent } from 'react';
 import {
     validateEmail,
     validatePassword,
@@ -79,7 +79,7 @@ export function SignupForm({ onSuccess, onNavigateToLogin, onSignup, onGuest, is
             email: emailR === true ? undefined : emailR,
             password: passwordR === true ? undefined : passwordR,
             confirmPassword: confirmR === true ? undefined : confirmR,
-            terms: termsAgreed ? undefined : '약관에 동의해주세요.',
+            terms: termsAgreed ? undefined : '이용약관 및 개인정보 처리방침에 동의해주세요.',
         };
 
         if (Object.values(newErrors).some(Boolean)) {
@@ -109,72 +109,58 @@ export function SignupForm({ onSuccess, onNavigateToLogin, onSignup, onGuest, is
 
     if (isSuccess) {
         return (
-            <div className="min-h-screen w-full flex items-center justify-center bg-[#f0f4f8]">
+            <div className="min-h-screen w-full flex items-center justify-center bg-[#F8FAFC]">
                 <div className="text-center animate-in zoom-in-95 duration-700">
-                    <div className="text-8xl mb-6 animate-bounce drop-shadow-md">✨</div>
-                    <h2 className="text-4xl font-black bg-gradient-to-r from-blue-600 to-emerald-500 bg-clip-text text-transparent mb-4 tracking-tighter">환영합니다!</h2>
-                    <p className="text-xl text-gray-600 font-bold">회원가입이 성공적으로 완료되었습니다.</p>
+                    <div className="text-8xl mb-6">🎉</div>
+                    <h2 className="text-[32px] font-black text-[#2563EB] mb-2 tracking-tighter">환영합니다!</h2>
+                    <p className="text-gray-600 font-bold">회원가입이 성공적으로 완료되었습니다.</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#f0f4f8] px-4 overflow-hidden relative py-12">
-            {/* Background Decorative Elements */}
-            <div className="absolute top-[-5%] right-[-5%] w-[35%] h-[35%] bg-blue-400/10 rounded-full blur-[100px] animate-float" />
-            <div className="absolute bottom-[-5%] left-[-5%] w-[35%] h-[35%] bg-emerald-400/10 rounded-full blur-[100px] animate-float" style={{ animationDelay: '-2s' }} />
-
-            <div className="text-center mb-10 z-10">
-                <h1 className="text-4xl font-black text-gray-900 tracking-tighter flex items-center justify-center gap-2">
-                    <span className="bg-gradient-to-r from-blue-600 to-emerald-500 bg-clip-text text-transparent">Short-Cut</span>
-                </h1>
-                <p className="text-gray-500 font-medium mt-2">아이디어를 현실로 만드는 첫 걸음</p>
+        <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#F8FAFC] px-4 py-20">
+            {/* Logo Section */}
+            <div className="mb-12">
+                <h1 className="text-[42px] font-black text-[#2563EB] tracking-tight">Short-Cut</h1>
+                <p className="text-gray-500 text-center font-medium -mt-1">새로운 혁신의 시작</p>
             </div>
 
-            <div className="w-full max-w-md glass-panel rounded-[2rem] p-8 sm:p-12 z-10 transition-all duration-500">
-                <h2 className="text-2xl font-bold text-gray-800 mb-8 text-center tracking-tight">회원가입</h2>
+            {/* Signup Card */}
+            <div className="w-full max-w-[460px] bg-white border border-gray-200 rounded-[12px] shadow-[0_2px_8px_rgba(0,0,0,0.05)] p-10">
+                <h2 className="text-[20px] font-bold text-gray-800 mb-8 text-center tracking-tight">회원가입</h2>
 
-                <form onSubmit={handleSubmit} noValidate className="space-y-6">
-                    {/* Email */}
-                    <div className="space-y-2">
-                        <label htmlFor="signup-email" className="block text-sm font-semibold text-gray-600 ml-1">이메일 주소</label>
-                        <input
-                            id="signup-email" type="email" autoComplete="email"
-                            value={email}
-                            onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-                            onBlur={handleEmailBlur}
-                            disabled={isDisabled}
-                            placeholder="you@example.com"
-                            className={`w-full px-5 py-3.5 rounded-2xl glass-input border-2 transition-all duration-300
-                                ${errors.email ? 'border-red-400/50 bg-red-50/30' : 'border-white/50 focus:border-blue-400/50'}
-                                outline-none`}
-                        />
-                        {errors.email && <p role="alert" className="text-xs text-red-500 font-medium mt-1 ml-1">⚠ {errors.email}</p>}
-                    </div>
-
-                    {/* Password */}
-                    <div className="space-y-2">
-                        <label htmlFor="signup-password" className="block text-sm font-semibold text-gray-600 ml-1">비밀번호</label>
-                        <PasswordToggleInput
-                            id="signup-password"
-                            autoComplete="new-password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            onBlur={handlePasswordBlur}
-                            disabled={isDisabled}
-                            placeholder="8자 이상, 영문·숫자·특수문자 포함"
-                            hasError={!!errors.password}
-                            className={`rounded-2xl glass-input border-2 px-5 py-3.5 ${errors.password ? 'border-red-400/50 bg-red-50/30' : 'border-white/50'}`}
-                        />
-                        <div className="px-1 mt-2 rotate-[-0.5deg]"><PasswordStrengthBar password={password} /></div>
-                        {errors.password && <p role="alert" className="text-xs text-red-500 font-medium mt-1 ml-1">⚠ {errors.password}</p>}
-                    </div>
-
-                    {/* Confirm Password */}
-                    <div className="space-y-2">
-                        <label htmlFor="signup-confirm" className="block text-sm font-semibold text-gray-600 ml-1">비밀번호 확인</label>
-                        <div className="relative">
+                <form onSubmit={handleSubmit} noValidate className="space-y-4">
+                    {/* Unified Input Box */}
+                    <div className="border border-gray-200 rounded-[12px] overflow-hidden focus-within:ring-2 focus-within:ring-[#2563EB] focus-within:border-[#2563EB] transition-all">
+                        <div className="relative border-b border-gray-100 flex items-center px-4 py-3.5 bg-white">
+                            <span className="text-gray-400 mr-3">📧</span>
+                            <input
+                                id="signup-email" type="email" autoComplete="email"
+                                value={email}
+                                onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+                                onBlur={handleEmailBlur}
+                                disabled={isDisabled}
+                                placeholder="이메일 주소"
+                                className="w-full h-full outline-none text-[16px] placeholder-gray-400"
+                            />
+                        </div>
+                        <div className="relative border-b border-gray-100 flex items-center px-4 py-3.5 bg-white">
+                            <span className="text-gray-400 mr-3">🔒</span>
+                            <PasswordToggleInput
+                                id="signup-password"
+                                autoComplete="new-password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                onBlur={handlePasswordBlur}
+                                disabled={isDisabled}
+                                placeholder="비밀번호(8자 이상, 영문·숫자·특수문자)"
+                                className="border-none bg-transparent p-0 focus:bg-transparent pl-0 pr-8"
+                            />
+                        </div>
+                        <div className="relative flex items-center px-4 py-3.5 bg-white">
+                            <span className="text-gray-400 mr-3">✅</span>
                             <PasswordToggleInput
                                 id="signup-confirm"
                                 autoComplete="new-password"
@@ -182,83 +168,69 @@ export function SignupForm({ onSuccess, onNavigateToLogin, onSignup, onGuest, is
                                 onChange={(e) => setConfirmPassword(e.target.value)}
                                 onBlur={handleConfirmPasswordBlur}
                                 disabled={isDisabled}
-                                placeholder="비밀번호를 다시 입력하세요"
-                                hasError={!!errors.confirmPassword || isConfirmMismatch}
-                                className={`rounded-2xl glass-input border-2 px-5 py-3.5 ${errors.confirmPassword || isConfirmMismatch ? 'border-red-400/50 bg-red-50/30' : 'border-white/50'}`}
+                                placeholder="비밀번호 확인"
+                                className="border-none bg-transparent p-0 focus:bg-transparent pl-0 pr-12"
                             />
-                            {isConfirmMatch && <span className="absolute right-14 top-1/2 -translate-y-1/2 text-emerald-500 text-lg">✅</span>}
-                            {isConfirmMismatch && <span className="absolute right-14 top-1/2 -translate-y-1/2 text-red-500 text-lg">❌</span>}
+                            {isConfirmMatch && <span className="absolute right-10 text-emerald-500 text-[14px] font-bold">일치</span>}
+                            {isConfirmMismatch && <span className="absolute right-10 text-red-500 text-[14px] font-bold">불일치</span>}
                         </div>
-                        {errors.confirmPassword && <p role="alert" className="text-xs text-red-500 font-medium mt-1 ml-1">⚠ {errors.confirmPassword}</p>}
                     </div>
 
-                    {/* Terms */}
-                    <div className="pt-2 px-1">
+                    <div className="px-1 mt-1"><PasswordStrengthBar password={password} /></div>
+
+                    {/* Terms Checkbox Section */}
+                    <div className="pt-4 pb-2 px-1">
                         <label className="flex items-start gap-4 cursor-pointer group">
                             <input
                                 type="checkbox"
                                 checked={termsAgreed}
                                 onChange={(e: ChangeEvent<HTMLInputElement>) => setTermsAgreed(e.target.checked)}
                                 disabled={isDisabled}
-                                className="w-5 h-5 mt-0.5 rounded-lg border-white/50 text-blue-600 focus:ring-blue-500/50 glass-input"
+                                className="w-5 h-5 mt-0.5 rounded border-gray-300 text-[#2563EB] focus:ring-[#2563EB]"
                             />
-                            <span className="text-sm text-gray-500 font-medium leading-relaxed">
-                                <span className="text-blue-600 font-bold hover:underline">서비스 이용약관</span> 및{' '}
-                                <span className="text-blue-600 font-bold hover:underline">개인정보 처리방침</span>에 동의합니다.
+                            <span className="text-[14px] text-gray-500 font-medium leading-[1.4]">
+                                <span className="text-[#2563EB] font-bold hover:underline">서비스 이용약관</span> 및{' '}
+                                <span className="text-[#2563EB] font-bold hover:underline">개인정보 처리방침</span>의 내용을 확인하였으며 이에 동의합니다.
                             </span>
                         </label>
-                        {errors.terms && <p role="alert" className="text-xs text-red-500 font-medium mt-2">⚠ {errors.terms}</p>}
                     </div>
 
-                    {errors.submit && (
-                        <div role="alert" className="p-4 bg-red-50/80 border border-red-200 text-red-600 rounded-xl text-sm font-bold text-center">
-                            {errors.submit}
+                    {/* Error Display */}
+                    {(errors.email || errors.password || errors.confirmPassword || errors.terms || errors.submit) && (
+                        <div role="alert" className="text-[13px] text-red-500 font-medium space-y-1 px-1">
+                            {errors.email && <p>⚠ {errors.email}</p>}
+                            {errors.password && <p>⚠ {errors.password}</p>}
+                            {errors.confirmPassword && <p>⚠ {errors.confirmPassword}</p>}
+                            {errors.terms && <p>⚠ {errors.terms}</p>}
+                            {errors.submit && <p className="py-2 bg-red-50 rounded-lg text-center mt-2 border border-red-100">{errors.submit}</p>}
                         </div>
                     )}
 
                     <button
                         type="submit"
                         disabled={isDisabled || !termsAgreed}
-                        className="w-full py-4 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white font-black rounded-2xl
-                            transition-all duration-300 active:scale-[0.98] shadow-lg shadow-emerald-100 flex items-center justify-center gap-2
-                            disabled:opacity-50 disabled:active:scale-100"
+                        className="w-full py-4 mt-6 bg-[#2563EB] hover:bg-[#1d4ed8] text-white font-bold text-[18px] rounded-[12px] transition-all duration-200 active:scale-[0.99] disabled:opacity-50"
                     >
-                        {isSubmitting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : '계정 생성하기'}
+                        {isSubmitting ? '가입 중...' : '회원가입'}
                     </button>
 
                     {onGuest && (
                         <button type="button" onClick={onGuest} className="w-full py-2 text-gray-400 hover:text-gray-600 font-medium text-sm transition-all hover:underline">
-                            비회원으로 둘러보기 (Guest Mode)
+                            비회원으로 둘러보기
                         </button>
                     )}
                 </form>
 
-                {/* Social Login Divider */}
-                <div className="relative flex items-center justify-center my-10">
-                    <div className="absolute inset-0 flex items-center px-2"><div className="w-full border-t border-gray-200/50" /></div>
-                    <span className="relative bg-[#f0f4f8] px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">JOIN WITH</span>
-                </div>
-
-                {/* Social Join Buttons */}
-                <div className="grid grid-cols-2 gap-4">
-                    <button type="button" onClick={() => window.location.href = `${API_BASE_URL}/api/v1/auth/login/google`}
-                        className="flex items-center justify-center gap-3 py-3 px-4 glass-panel rounded-2xl hover:bg-white/80 transition-all duration-300 group border-white/40">
-                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                        <span className="text-sm font-bold text-gray-700">Google</span>
-                    </button>
-                    <button type="button" onClick={() => window.location.href = `${API_BASE_URL}/api/v1/auth/login/naver`}
-                        className="flex items-center justify-center gap-3 py-3 px-4 bg-[#03C75A] hover:bg-[#02b351] rounded-2xl transition-all duration-300 group shadow-md">
-                        <span className="text-white font-black text-lg group-hover:scale-110 transition-transform">N</span>
-                        <span className="text-sm font-bold text-white">Naver</span>
-                    </button>
-                </div>
-
-                <p className="mt-10 text-center text-sm text-gray-500 font-medium">
+                <p className="mt-10 text-center text-[14px] text-gray-500 font-medium">
                     이미 계정이 있으신가요?{' '}
-                    <button type="button" onClick={onNavigateToLogin} className="text-blue-600 font-bold hover:underline transition-all">로그인하기</button>
+                    <button type="button" onClick={onNavigateToLogin} className="text-[#2563EB] font-bold hover:underline">로그인하기</button>
                 </p>
             </div>
-            <p className="mt-8 text-xs text-gray-400 font-medium z-10 opacity-70">© 2026 Short-Cut AI. All rights reserved.</p>
+
+            {/* Simple Footer */}
+            <div className="mt-16 text-center space-y-1">
+                <p className="text-[13px] text-gray-400 font-semibold tracking-tight">© Short-Cut AI. All rights reserved.</p>
+            </div>
         </div>
     );
 }

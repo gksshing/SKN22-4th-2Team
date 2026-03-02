@@ -12,7 +12,7 @@
  * - 접근성 유지: role="alert", label htmlFor, autoComplete
  */
 
-import { useState, useCallback, FormEvent, ChangeEvent } from 'react';
+import React, { useState, useCallback, FormEvent, ChangeEvent } from 'react';
 import { validateEmail, validatePassword } from '../../utils/validators';
 import { PasswordToggleInput } from './PasswordToggleInput';
 
@@ -37,6 +37,8 @@ export function LoginForm({ onSuccess, onNavigateToSignup, onLogin, onGuest, isL
     const [password, setPassword] = useState('');
     const [errors, setErrors] = useState<FormErrors>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [keepLoggedIn, setKeepLoggedIn] = useState(false);
+    const [ipSecurity, setIpSecurity] = useState(true);
 
     const handleEmailBlur = useCallback(() => {
         const r = validateEmail(email);
@@ -67,7 +69,7 @@ export function LoginForm({ onSuccess, onNavigateToSignup, onLogin, onGuest, isL
             await onLogin({ email, password });
             onSuccess();
         } catch {
-            setErrors({ submit: '아이디 또는 비밀번호를 확인해주세요.' });
+            setErrors({ submit: '아이디(로그인 전용 아이디) 또는 비밀번호를 잘못 입력했습니다.\n입력하신 내용을 다시 확인해주세요.' });
         } finally {
             setIsSubmitting(false);
         }
@@ -76,72 +78,77 @@ export function LoginForm({ onSuccess, onNavigateToSignup, onLogin, onGuest, isL
     const isDisabled = isSubmitting || isLoading;
 
     return (
-        <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#f0f4f8] px-4 overflow-hidden relative">
-            {/* Background Decorative Elements */}
-            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-400/20 rounded-full blur-[120px] animate-float" />
-            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald-400/20 rounded-full blur-[120px] animate-float" style={{ animationDelay: '-3s' }} />
-
-            {/* Brand Header */}
-            <div className="text-center mb-10 z-10">
-                <h1 className="text-4xl font-black text-gray-900 tracking-tighter flex items-center justify-center gap-2">
-                    <span className="bg-gradient-to-r from-blue-600 to-emerald-500 bg-clip-text text-transparent">Short-Cut</span>
-                </h1>
-                <p className="text-gray-500 font-medium mt-2">AI 기반 특허 아이디어 분석 서비스</p>
+        <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#F8FAFC] px-4 py-12">
+            {/* Logo Section */}
+            <div className="mb-12">
+                <h1 className="text-[42px] font-black text-[#2563EB] tracking-tight">Short-Cut</h1>
+                <p className="text-gray-500 text-center font-medium -mt-1">AI 특허 아이디어 분석 서비스</p>
             </div>
 
-            {/* Login Card (Glassmorphism) */}
-            <div className="w-full max-w-md glass-panel rounded-[2rem] p-8 sm:p-12 z-10 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(0,0,0,0.1)]">
-                <h2 className="text-2xl font-bold text-gray-800 mb-8 text-center tracking-tight">반가워요! 다시 오셨군요 👋</h2>
-
-                <form onSubmit={handleSubmit} noValidate className="space-y-6">
-                    {/* Email Input */}
-                    <div className="space-y-2">
-                        <label htmlFor="login-email" className="block text-sm font-semibold text-gray-600 ml-1">이메일</label>
-                        <input
-                            id="login-email"
-                            type="email"
-                            autoComplete="email"
-                            value={email}
-                            onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-                            onBlur={handleEmailBlur}
-                            disabled={isDisabled}
-                            placeholder="you@example.com"
-                            className={`w-full px-5 py-3.5 rounded-2xl glass-input border-2 transition-all duration-300
-                                ${errors.email ? 'border-red-400/50 bg-red-50/30' : 'border-white/50 focus:border-blue-400/50'}
-                                disabled:opacity-50 outline-none shadow-sm`}
-                        />
-                        {errors.email && (
-                            <p role="alert" className="text-xs text-red-500 font-medium flex items-center gap-1 mt-1 ml-1 animate-in slide-in-from-left-2 duration-300">
-                                <span>⚠</span> {errors.email}
-                            </p>
-                        )}
+            {/* Login Card (Naver Style) */}
+            <div className="w-full max-w-[460px] bg-white border border-gray-200 rounded-[12px] shadow-[0_2px_8px_rgba(0,0,0,0.05)] p-10">
+                <form onSubmit={handleSubmit} noValidate className="space-y-4">
+                    {/* Unified Input Box */}
+                    <div className="border border-gray-200 rounded-[12px] overflow-hidden focus-within:ring-2 focus-within:ring-[#2563EB] focus-within:border-[#2563EB] transition-all">
+                        <div className="relative border-b border-gray-100 flex items-center px-4 py-3.5 bg-white">
+                            <span className="text-gray-400 mr-3">📧</span>
+                            <input
+                                id="login-email"
+                                type="email"
+                                autoComplete="email"
+                                value={email}
+                                onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+                                onBlur={handleEmailBlur}
+                                disabled={isDisabled}
+                                placeholder="이메일"
+                                className="w-full h-full outline-none text-[16px] placeholder-gray-400"
+                            />
+                        </div>
+                        <div className="relative flex items-center px-4 py-3.5 bg-white">
+                            <span className="text-gray-400 mr-3">🔒</span>
+                            <PasswordToggleInput
+                                id="login-password"
+                                autoComplete="current-password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                onBlur={handlePasswordBlur}
+                                disabled={isDisabled}
+                                placeholder="비밀번호"
+                                hasError={false} // Use unified error display below
+                                className="border-none bg-transparent p-0 focus:bg-transparent pl-0 pr-8"
+                            />
+                        </div>
                     </div>
 
-                    {/* Password Input */}
-                    <div className="space-y-2">
-                        <label htmlFor="login-password" className="block text-sm font-semibold text-gray-600 ml-1">비밀번호</label>
-                        <PasswordToggleInput
-                            id="login-password"
-                            autoComplete="current-password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            onBlur={handlePasswordBlur}
-                            disabled={isDisabled}
-                            placeholder="비밀번호를 입력하세요"
-                            hasError={!!errors.password}
-                            className={`rounded-2xl glass-input border-2 px-5 py-3.5 ${errors.password ? 'border-red-400/50 bg-red-50/30' : 'border-white/50'}`}
-                        />
-                        {errors.password && (
-                            <p role="alert" className="text-xs text-red-500 font-medium flex items-center gap-1 mt-1 ml-1 animate-in slide-in-from-left-2 duration-300">
-                                <span>⚠</span> {errors.password}
-                            </p>
-                        )}
+                    {/* Checkbox & Toggle Section */}
+                    <div className="flex items-center justify-between text-[14px] px-1 py-1">
+                        <label className="flex items-center gap-2 cursor-pointer text-gray-600 font-medium">
+                            <input
+                                type="checkbox"
+                                checked={keepLoggedIn}
+                                onChange={(e) => setKeepLoggedIn(e.target.checked)}
+                                className="w-5 h-5 rounded border-gray-300 text-[#2563EB] focus:ring-[#2563EB]"
+                            />
+                            로그인 상태 유지
+                        </label>
+                        <div className="flex items-center gap-2 text-gray-500 font-medium">
+                            <span>IP보안</span>
+                            <button
+                                type="button"
+                                onClick={() => setIpSecurity(!ipSecurity)}
+                                className={`w-10 h-5 rounded-full p-0.5 transition-colors duration-200 ${ipSecurity ? 'bg-[#2563EB]' : 'bg-gray-300'}`}
+                            >
+                                <div className={`w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform duration-200 ${ipSecurity ? 'translate-x-5' : 'translate-x-0'}`} />
+                            </button>
+                        </div>
                     </div>
 
-                    {/* Submit Error */}
-                    {errors.submit && (
-                        <div role="alert" className="p-4 bg-red-50/80 backdrop-blur-md border border-red-200 text-red-600 rounded-xl text-sm font-semibold text-center animate-in fade-in duration-300">
-                            {errors.submit}
+                    {/* Field Errors */}
+                    {(errors.email || errors.password || errors.submit) && (
+                        <div role="alert" className="text-[13px] text-red-500 font-medium space-y-1 px-1">
+                            {errors.email && <p>⚠ {errors.email}</p>}
+                            {errors.password && <p>⚠ {errors.password}</p>}
+                            {errors.submit && <p className="whitespace-pre-line text-center py-2 bg-red-50 rounded-lg border border-red-100 mt-2">{errors.submit}</p>}
                         </div>
                     )}
 
@@ -149,70 +156,69 @@ export function LoginForm({ onSuccess, onNavigateToSignup, onLogin, onGuest, isL
                     <button
                         type="submit"
                         disabled={isDisabled}
-                        className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-bold rounded-2xl
-                            transition-all duration-300 active:scale-[0.98] shadow-lg shadow-blue-200 flex items-center justify-center gap-2
-                            disabled:opacity-50 disabled:active:scale-100"
+                        className="w-full py-4 mt-4 bg-[#2563EB] hover:bg-[#1d4ed8] text-white font-bold text-[18px] rounded-[12px] transition-all duration-200 active:scale-[0.99] disabled:opacity-50"
                     >
-                        {isSubmitting ? (
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : '로그인'}
+                        {isSubmitting ? '로그인 중...' : '로그인'}
                     </button>
 
-                    {/* Guest Mode Link */}
+                    {/* Guest Link */}
                     {onGuest && (
                         <button
                             type="button"
                             onClick={onGuest}
-                            className="w-full py-2 text-gray-400 hover:text-gray-600 font-medium text-sm transition-all hover:underline"
+                            className="w-full py-2 text-gray-400 hover:text-gray-600 font-medium text-sm transition-all hover:underline mt-2"
                         >
-                            비회원으로 둘러보기 (Guest Mode)
+                            비회원으로 둘러보기
                         </button>
                     )}
                 </form>
 
-                {/* Social Login Divider */}
-                <div className="relative flex items-center justify-center my-10">
-                    <div className="absolute inset-0 flex items-center px-2"><div className="w-full border-t border-gray-200/50" /></div>
-                    <span className="relative bg-white/20 backdrop-blur-md px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                        OR CONTINUE WITH
-                    </span>
+                {/* Footer Links with thin separators */}
+                <div className="mt-8 flex items-center justify-center gap-4 text-[13px] text-gray-400 font-medium">
+                    <button type="button" className="hover:underline">비밀번호 찾기</button>
+                    <span className="w-[1px] h-3 bg-gray-200"></span>
+                    <button type="button" className="hover:underline">아이디 찾기</button>
+                    <span className="w-[1px] h-3 bg-gray-200"></span>
+                    <button type="button" onClick={onNavigateToSignup} className="text-gray-600 font-bold hover:underline">회원가입</button>
+                </div>
+            </div>
+
+            {/* Social Login Buttons (Naver Passkey Style) */}
+            <div className="w-full max-w-[460px] mt-10">
+                <div className="relative flex items-center justify-center mb-6">
+                    <div className="absolute inset-0 flex items-center px-2"><div className="w-full border-t border-gray-200" /></div>
+                    <span className="relative bg-[#F8FAFC] px-4 text-[12px] font-bold text-gray-400">다른 방식으로 로그인</span>
                 </div>
 
-                {/* Social Login Buttons */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                     <button
                         type="button"
                         onClick={() => window.location.href = `${API_BASE_URL}/api/v1/auth/login/google`}
-                        className="flex items-center justify-center gap-3 py-3 px-4 glass-panel rounded-2xl hover:bg-white/80 transition-all duration-300 group border-white/40"
+                        className="flex items-center justify-center gap-3 py-3.5 bg-white border border-gray-200 rounded-[12px] hover:bg-gray-50 transition-all font-bold text-gray-700 text-[15px] shadow-sm active:scale-[0.98]"
                     >
-                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                        <span className="text-sm font-bold text-gray-700">Google</span>
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
+                        Google
                     </button>
                     <button
                         type="button"
                         onClick={() => window.location.href = `${API_BASE_URL}/api/v1/auth/login/naver`}
-                        className="flex items-center justify-center gap-3 py-3 px-4 bg-[#03C75A] hover:bg-[#02b351] rounded-2xl transition-all duration-300 group shadow-md shadow-green-100"
+                        className="flex items-center justify-center gap-3 py-3.5 bg-[#03C75A] border border-[#02b351] rounded-[12px] hover:bg-[#02b351] transition-all font-bold text-white text-[15px] shadow-sm active:scale-[0.98]"
                     >
-                        <span className="text-white font-black text-lg group-hover:scale-110 transition-transform">N</span>
-                        <span className="text-sm font-bold text-white">Naver</span>
+                        <span className="font-black text-[18px]">N</span>
+                        Naver
                     </button>
                 </div>
-
-                {/* Footer Links */}
-                <p className="mt-10 text-center text-sm text-gray-500 font-medium">
-                    아직 계정이 없으신가요?{' '}
-                    <button
-                        type="button"
-                        onClick={onNavigateToSignup}
-                        className="text-blue-600 font-bold hover:underline transition-all"
-                    >
-                        회원가입
-                    </button>
-                </p>
             </div>
 
             {/* Simple Footer */}
-            <p className="mt-8 text-xs text-gray-400 font-medium z-10 opacity-70">© 2026 Short-Cut AI. Built for Innovators.</p>
+            <div className="mt-16 text-center space-y-1">
+                <p className="text-[13px] text-gray-400 font-semibold tracking-tight">© Short-Cut AI. All rights reserved.</p>
+                <div className="flex items-center justify-center gap-3 text-[11px] text-gray-300">
+                    <button className="hover:underline">이용약관</button>
+                    <button className="hover:underline">개인정보처리방침</button>
+                    <button className="hover:underline">고객센터</button>
+                </div>
+            </div>
         </div>
     );
 }
