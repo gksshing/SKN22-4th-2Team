@@ -12,8 +12,10 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
+    hashed_password = Column(String, nullable=True)  # 소셜 로그인의 경우 비밀번호가 없을 수 있음
     is_active = Column(Boolean, default=True)
+    social_provider = Column(String, nullable=True)  # google, naver, kakao
+    social_id = Column(String, nullable=True)        # 소셜 플랫폼에서 제공하는 고유 ID
     created_at = Column(DateTime, default=datetime.utcnow)
 
 

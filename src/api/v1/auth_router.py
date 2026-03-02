@@ -6,6 +6,7 @@ from src.database.models import User, UserSession
 from src.api.schemas.auth import UserCreate, UserLogin, UserResponse, Token
 from src.api.services.security import get_password_hash, verify_password, create_access_token, create_refresh_token
 from src.api.dependencies import get_current_user
+from src.api.services.social_auth import SocialAuthService
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -128,3 +129,66 @@ def logout(response: Response):
     response.delete_cookie(key="access_token")
     response.delete_cookie(key="refresh_token")
     return {"status": "success", "message": "로그아웃 되었습니다."}
+
+from fastapi.concurrency import run_in_threadpool
+
+# --- Social Login Callbacks ---
+
+def handle_social_login(user_info: dict, provider: str, db: Session, response: Response):
+    """소셜 유저 정보를 바탕으로 로그인/회원가입 처리를 수행합니다.
+    이 함수는 동기식 DB 연산을 수행하므로 run_in_threadpool을 통해 호출되어야 합니다.
+    """
+    email = user_info.get("email")
+    social_id = str(user_info.get("id") or user_info.get("sub"))
+    
+    if not email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="소셜 계정에서 이메일 정보를 가져올 수 없습니다.")
+
+    # 1. 기존 유저 확인 (이메일 기준)
+    user = db.query(User).filter(User.email == email).first()
+    
+    if user:
+        # 기존 유저가 있으나 소셜 정보가 없는 경우 업데이트 (계정 연결)
+        if not user.social_id:
+            user.social_provider = provider
+            user.social_id = social_id
+            db.commit()
+    else:
+        # 신규 유저 생성
+        user = User(
+            email=email,
+            social_provider=provider,
+            social_id=social_id,
+            is_active=True
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    # 2. 토큰 생성 및 쿠키 설정
+    access_token = create_access_token(data={"sub": user.email})
+    refresh_token = create_refresh_token(data={"sub": user.email})
+    
+    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="lax", max_age=3600)
+    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite="lax", max_age=86400 * 7)
+    
+    return {
+        "status": "success",
+        "message": f"{provider} 로그인에 성공하였습니다.",
+        "user": {"id": user.id, "email": user.email}
+    }
+
+@router.get("/callback/google")
+async def google_callback(code: str, response: Response, db: Session = Depends(get_db)):
+    user_info = await SocialAuthService.get_google_user(code)
+    return await run_in_threadpool(handle_social_login, user_info, "google", db, response)
+
+@router.get("/callback/naver")
+async def naver_callback(code: str, state: str, response: Response, db: Session = Depends(get_db)):
+    user_info = await SocialAuthService.get_naver_user(code, state)
+    return await run_in_threadpool(handle_social_login, user_info, "naver", db, response)
+
+@router.get("/callback/kakao")
+async def kakao_callback(code: str, response: Response, db: Session = Depends(get_db)):
+    user_info = await SocialAuthService.get_kakao_user(code)
+    return await run_in_threadpool(handle_social_login, user_info, "kakao", db, response)

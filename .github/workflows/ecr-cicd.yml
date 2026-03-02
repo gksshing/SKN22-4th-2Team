@@ -239,6 +239,15 @@ jobs:
         run: |
           sed -i 's/<AWS_ACCOUNT_ID>/${{ secrets.AWS_ACCOUNT_ID }}/g' infra/ecs/task-definition-template.json
 
+      - name: GitHub Secrets를 Task Definition에 주입 (소셜 로그인)
+        run: |
+          sed -i 's|GOOGLE_CLIENT_ID_PLACEHOLDER|${{ secrets.GOOGLE_CLIENT_ID }}|g' infra/ecs/task-definition-template.json
+          sed -i 's|GOOGLE_CLIENT_SECRET_PLACEHOLDER|${{ secrets.GOOGLE_CLIENT_SECRET }}|g' infra/ecs/task-definition-template.json
+          sed -i 's|NAVER_CLIENT_ID_PLACEHOLDER|${{ secrets.NAVER_CLIENT_ID }}|g' infra/ecs/task-definition-template.json
+          sed -i 's|NAVER_CLIENT_SECRET_PLACEHOLDER|${{ secrets.NAVER_CLIENT_SECRET }}|g' infra/ecs/task-definition-template.json
+          sed -i 's|KAKAO_CLIENT_ID_PLACEHOLDER|${{ secrets.KAKAO_CLIENT_ID }}|g' infra/ecs/task-definition-template.json
+          sed -i 's|KAKAO_CLIENT_SECRET_PLACEHOLDER|${{ secrets.KAKAO_CLIENT_SECRET }}|g' infra/ecs/task-definition-template.json
+
       - name: ECS Task Definition 이미지 URI 업데이트
         id: task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
