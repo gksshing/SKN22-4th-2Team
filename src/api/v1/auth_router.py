@@ -2,7 +2,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from sqlalchemy.orm import Session
 from src.database.connection import get_db
-from src.database.models import User
+from src.database.models import User, UserSession
 from src.api.schemas.auth import UserCreate, UserLogin, UserResponse, Token
 from src.api.services.security import get_password_hash, verify_password, create_access_token, create_refresh_token
 from src.api.dependencies import get_current_user
@@ -86,10 +86,29 @@ def login(request: Request, response: Response, user_in: UserLogin, db: Session 
         max_age=86400 * 7  # 7일
     )
     
+    # 3. 브라우저 세션과 사용자 계정 연동 (Priority 2)
+    if user_in.session_id:
+        try:
+            existing_session = db.query(UserSession).filter(UserSession.session_id == user_in.session_id).first()
+            if existing_session:
+                existing_session.user_id = user.id
+            else:
+                new_session = UserSession(session_id=user_in.session_id, user_id=user.id)
+                db.add(new_session)
+            db.commit()
+            logger.info(f"Linked session {user_in.session_id} to user {user.email}")
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Failed to link session to user: {e}")
+            # 인증 자체는 성공했으므로 에러를 던지지는 않음 (히스토리 연동만 실패)
+
     return {
         "status": "success",
         "message": "로그인에 성공하였습니다.",
-        "user": {"email": user.email}
+        "user": {
+            "id": user.id,
+            "email": user.email
+        }
     }
 
 @router.get("/me", response_model=UserResponse)

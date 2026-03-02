@@ -7,7 +7,7 @@
  * - 모든 API 요청의 X-Session-ID 헤더에 사용
  */
 
-const SESSION_KEY = 'x-shortcut-session-id';
+const SESSION_KEY = 'shortcut_session_id';
 
 /**
  * 세션 ID 반환 함수.

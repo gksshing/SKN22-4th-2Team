@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { HistoryRecord } from '../types/rag';
-import { getSessionId } from './useSessionId';
+import { getSessionId } from '../utils/session';
 
 interface UseHistoryResult {
     records: HistoryRecord[];

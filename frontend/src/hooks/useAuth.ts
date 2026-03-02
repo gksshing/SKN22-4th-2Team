@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { getSessionId, resetSessionId } from '../utils/session';
 import { authService } from '../services/authService';
 import { UserResponse, LoginParams, SignupParams } from '../types/auth';
 
@@ -46,7 +47,9 @@ export function useAuth(): UseAuthReturn {
     const login = useCallback(async (params: LoginParams) => {
         setIsLoading(true);
         try {
-            const data = await authService.login(params);
+            // Priority 2: Pass sessionId to link history on login
+            const sessionId = getSessionId();
+            const data = await authService.login({ ...params, sessionId });
             setUser(data.user);
         } catch (error: any) {
             console.error('Login failed:', error);
@@ -63,6 +66,7 @@ export function useAuth(): UseAuthReturn {
         try {
             await authService.logout();
         } finally {
+            resetSessionId(); // Priority 3: Reset session on logout
             setUser(null);
             setIsLoading(false);
         }
