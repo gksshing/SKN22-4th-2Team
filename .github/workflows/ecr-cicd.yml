@@ -15,14 +15,14 @@ name: ECR 이미지 빌드 및 푸시
 on:
   push:
     branches:
-      - develop   # production 환경 배포 (main 대용)
+      - develop # production 환경 배포 (main 대용)
     tags:
-      - "v*"      # 시맨틱 버전 태그 (예: v1.0.0) → production 배포
+      - "v*" # 시맨틱 버전 태그 (예: v1.0.0) → production 배포
 
 # GitHub Actions OIDC 토큰 발급에 필요한 권한
 permissions:
-  id-token: write   # OIDC JWT 토큰 발급
-  contents: read    # 코드 체크아웃
+  id-token: write # OIDC JWT 토큰 발급
+  contents: read # 코드 체크아웃
 
 env:
   # AWS 설정 (GitHub Secrets에서 주입)
@@ -239,14 +239,7 @@ jobs:
         run: |
           sed -i 's/<AWS_ACCOUNT_ID>/${{ secrets.AWS_ACCOUNT_ID }}/g' infra/ecs/task-definition-template.json
 
-      - name: GitHub Secrets를 Task Definition에 주입 (소셜 로그인)
-        run: |
-          sed -i 's|GOOGLE_CLIENT_ID_PLACEHOLDER|${{ secrets.GOOGLE_CLIENT_ID }}|g' infra/ecs/task-definition-template.json
-          sed -i 's|GOOGLE_CLIENT_SECRET_PLACEHOLDER|${{ secrets.GOOGLE_CLIENT_SECRET }}|g' infra/ecs/task-definition-template.json
-          sed -i 's|NAVER_CLIENT_ID_PLACEHOLDER|${{ secrets.NAVER_CLIENT_ID }}|g' infra/ecs/task-definition-template.json
-          sed -i 's|NAVER_CLIENT_SECRET_PLACEHOLDER|${{ secrets.NAVER_CLIENT_SECRET }}|g' infra/ecs/task-definition-template.json
-          sed -i 's|KAKAO_CLIENT_ID_PLACEHOLDER|${{ secrets.KAKAO_CLIENT_ID }}|g' infra/ecs/task-definition-template.json
-          sed -i 's|KAKAO_CLIENT_SECRET_PLACEHOLDER|${{ secrets.KAKAO_CLIENT_SECRET }}|g' infra/ecs/task-definition-template.json
+      # 소셜 로그인 제거됨 — 환경변수 주입 단계 불필요
 
       - name: ECS Task Definition 이미지 URI 업데이트
         id: task-def
