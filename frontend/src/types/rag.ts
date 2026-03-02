@@ -41,15 +41,4 @@ export interface StreamCompleteEvent {
     result: RagAnalysisResult;
 }
 
-// ============================================================
-// Issue #51: 임시 NDJSON 호환 타입 (Backend SSE 전환 전까지 사용)
-// TODO: Backend가 SSE로 전환되면 아래 타입 제거
-// ============================================================
-
-/** Backend가 현재 내리는 단순 JSON 라인 형식 (임시) */
-export interface NdjsonStreamLine {
-    status: 'processing' | 'searching' | 'complete' | 'error' | 'empty';
-    message?: string;
-    percent?: number;
-    result?: RagAnalysisResult;
-}
+// ※ Backend SSE 전환 완료 (Issue #51) — NdjsonStreamLine 타입 제거됨
