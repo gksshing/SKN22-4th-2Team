@@ -32,32 +32,9 @@ apiClient.interceptors.request.use((config) => {
 
 apiClient.interceptors.response.use(
     (response) => response,
-    async (error) => {
-        const originalRequest = error.config;
-
-        // 401 Unauthorized 감지 시 즉시 세션 만료 처리
-        if (error.response?.status === 401 && !originalRequest._retry) {
-            originalRequest._retry = true;
-
-            // 로그인 요청 자체가 실패한 경우는 인터셉터에서 리다이렉트 하지 않음 (LoginForm에서 알림 처리)
-            if (originalRequest.url?.includes('/auth/login')) {
-                return Promise.reject(error);
-            }
-
-            _redirectToLogin();
-            return Promise.reject(error);
-        }
-
+    (error) => {
         return Promise.reject(error);
     }
 );
-
-
-/** 세션 만료 안내 후 로그인 페이지로 이동 */
-function _redirectToLogin(): void {
-    // 안내 이벤트만 발생시키고, 실제 UI 처리는 App.tsx 등에서 담당하도록 변경 (SPA/Guest 모드 호환)
-    const event = new CustomEvent('auth:session-expired');
-    window.dispatchEvent(event);
-}
 
 export default apiClient;
