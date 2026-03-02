@@ -1,13 +1,22 @@
 /**
- * 로그인 폼 컴포넌트 (Issue #46)
+ * 로그인 폼 컴포넌트 — Issue #52 UI 리뉴얼
  *
- * - onBlur 시 인라인 에러 표시 (alert 금지)
- * - 제출 실패 시 단일 통합 에러 (계정 열거 공격 방어)
- * - noValidate + role="alert" 접근성 준수
+ * 변경 사항 (41_issue52_login_ui_redesign_plan.md 반영):
+ * - 배경: 어두운 그라데이션 → 라이트 테마(#F8FAFC)
+ * - 카드: shadow-md + border border-gray-200 (네이버 스타일)
+ * - 브랜드 헤더: 카드 외부 상단으로 분리
+ * - 비밀번호: show/hide 토글 버튼 추가
+ * - CTA 버튼: 그린 계열(#00C73C) → 브랜드 컬러 통일
+ * - 하단 링크: 회원가입 | 비밀번호 찾기 텍스트 링크 정돈
+ * - 보안 유지: 계정 열거 공격 방어 단일 에러 메시지
+ * - 접근성 유지: role="alert", label htmlFor, autoComplete
  */
 
 import { useState, useCallback, FormEvent, ChangeEvent } from 'react';
 import { validateEmail, validatePassword } from '../../utils/validators';
+import { PasswordToggleInput } from './PasswordToggleInput';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
 
 interface LoginFormProps {
     onSuccess: () => void;
@@ -21,8 +30,6 @@ interface FormErrors {
     password?: string;
     submit?: string;
 }
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
 
 export function LoginForm({ onSuccess, onNavigateToSignup, onLogin, isLoading }: LoginFormProps) {
     const [email, setEmail] = useState('');
@@ -58,10 +65,9 @@ export function LoginForm({ onSuccess, onNavigateToSignup, onLogin, isLoading }:
         try {
             await onLogin({ email, password });
             onSuccess();
-        } catch (error: unknown) {
-            // Toast와 정렬: 백엔드 메시지 또는 기본 메시지
-            const errorMessage = error instanceof Error ? error.message : '아이디 또는 비밀번호를 확인해주세요.';
-            setErrors({ submit: errorMessage });
+        } catch {
+            // 계정 열거 공격 방어: 실패 원인 노출 없이 단일 메시지
+            setErrors({ submit: '아이디 또는 비밀번호를 확인해주세요.' });
         } finally {
             setIsSubmitting(false);
         }
@@ -69,109 +75,160 @@ export function LoginForm({ onSuccess, onNavigateToSignup, onLogin, isLoading }:
 
     const isDisabled = isSubmitting || isLoading;
 
-    const inputClass = (hasError: boolean) =>
-        `w-full px-4 py-3 rounded-xl border ${hasError ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:border-blue-500 focus:ring-blue-500'
-        } bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-200 disabled:opacity-50 disabled:bg-gray-50`;
-
     return (
-        <div className="min-h-screen w-full flex items-center justify-center bg-[#F8FAFC] p-4">
-            <div className="w-full max-w-md bg-white rounded-xl shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1)] p-8 sm:p-10">
-                {/* Logo Area */}
-                <div className="text-center mb-8">
-                    <h1 className="text-3xl font-black text-gray-900 tracking-tight mb-2">✂️ Short-Cut</h1>
-                    <p className="text-gray-500 text-sm">AI 특허 아이디어 검증 서비스</p>
-                </div>
+        /* ── 전체 화면 래퍼: 라이트 연회색 배경, 수직 중앙 정렬 ── */
+        <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#F8FAFC] px-4">
 
-                <div className="mb-8 text-center">
-                    <h2 className="text-2xl font-bold text-gray-800">반가워요! 👋</h2>
-                    <p className="text-gray-500 mt-1">서비스 이용을 위해 로그인해주세요.</p>
-                </div>
+            {/* ── 브랜드 헤더 (카드 외부 상단) ── */}
+            <div className="text-center mb-8">
+                <h1 className="text-3xl font-black text-gray-900 tracking-tight">✂️ Short-Cut</h1>
+                <p className="text-gray-500 text-sm mt-1">AI 특허 아이디어 검증 서비스</p>
+            </div>
 
-                <form onSubmit={handleSubmit} noValidate className="space-y-5">
+            {/* ── 로그인 카드 ── */}
+            <div className="w-full max-w-md bg-white rounded-2xl border border-gray-200 shadow-md px-10 py-10">
+
+                <h2 className="text-xl font-bold text-gray-800 mb-6 text-center">로그인</h2>
+
+                <form onSubmit={handleSubmit} noValidate className="space-y-4">
+
                     {/* 이메일 */}
-                    <div className="space-y-1.5">
-                        <label htmlFor="login-email" className="block text-sm font-semibold text-gray-700">이메일 주소</label>
+                    <div>
+                        <label htmlFor="login-email" className="block text-sm font-medium text-gray-700 mb-1.5">
+                            이메일
+                        </label>
                         <input
-                            id="login-email" type="email" autoComplete="email"
+                            id="login-email"
+                            type="email"
+                            autoComplete="email"
                             value={email}
                             onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                             onBlur={handleEmailBlur}
                             disabled={isDisabled}
                             placeholder="example@email.com"
-                            className={inputClass(!!errors.email)}
+                            className={`w-full px-4 py-3 rounded-lg border text-gray-800 placeholder-gray-400 text-sm
+                                focus:outline-none focus:ring-1 transition-colors
+                                ${errors.email
+                                    ? 'border-red-400 bg-red-50 focus:border-red-500 focus:ring-red-200'
+                                    : 'border-gray-300 bg-white focus:border-[#00C73C] focus:ring-green-100'}
+                                disabled:opacity-50 disabled:cursor-not-allowed`}
                         />
-                        {errors.email && <p role="alert" className="text-sm text-red-500 mt-1">{errors.email}</p>}
+                        {errors.email && (
+                            <p role="alert" className="mt-1.5 text-xs text-red-500 flex items-center gap-1">
+                                <span>⚠</span> {errors.email}
+                            </p>
+                        )}
                     </div>
 
-                    {/* 비밀번호 */}
-                    <div className="space-y-1.5">
-                        <div className="flex justify-between items-center">
-                            <label htmlFor="login-password" className="block text-sm font-semibold text-gray-700">비밀번호</label>
-                            <button type="button" className="text-sm text-blue-600 hover:text-blue-700 font-medium">비밀번호 찾기</button>
-                        </div>
-                        <input
-                            id="login-password" type="password" autoComplete="current-password"
+                    {/* 비밀번호 — PasswordToggleInput 으로 show/hide 토글 */}
+                    <div>
+                        <label htmlFor="login-password" className="block text-sm font-medium text-gray-700 mb-1.5">
+                            비밀번호
+                        </label>
+                        <PasswordToggleInput
+                            id="login-password"
+                            autoComplete="current-password"
                             value={password}
-                            onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+                            onChange={(e) => setPassword(e.target.value)}
                             onBlur={handlePasswordBlur}
                             disabled={isDisabled}
                             placeholder="비밀번호를 입력하세요"
-                            className={inputClass(!!errors.password)}
+                            hasError={!!errors.password}
+                            className={`bg-white text-sm ${errors.password
+                                ? 'border-red-400 focus:border-red-500 focus:ring-red-200'
+                                : 'border-gray-300 focus:border-[#00C73C] focus:ring-green-100'}`}
                         />
-                        {errors.password && <p role="alert" className="text-sm text-red-500 mt-1">{errors.password}</p>}
+                        {errors.password && (
+                            <p role="alert" className="mt-1.5 text-xs text-red-500 flex items-center gap-1">
+                                <span>⚠</span> {errors.password}
+                            </p>
+                        )}
                     </div>
 
-                    {/* 제출 통합 에러 */}
+                    {/* 서밋 에러 (버튼 위) */}
                     {errors.submit && (
-                        <div role="alert" className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600 text-center">
+                        <div
+                            role="alert"
+                            className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600 text-center font-medium"
+                        >
                             {errors.submit}
                         </div>
                     )}
 
-                    {/* 로그인 버튼 */}
+                    {/* 로그인 CTA 버튼 */}
                     <button
                         type="submit"
                         disabled={isDisabled}
-                        className="w-full py-3.5 bg-[#2563EB] hover:bg-blue-700 text-white font-bold rounded-xl transition-colors duration-200 shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full py-3 bg-[#00C73C] hover:bg-[#00b235] active:scale-[0.98] text-white font-bold text-sm rounded-lg
+                            transition-all duration-150 mt-2
+                            disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100
+                            flex items-center justify-center gap-2"
                     >
-                        {isSubmitting ? (
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                        ) : '로그인'}
+                        {isSubmitting
+                            ? <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> 로그인 중...</>
+                            : '로그인'}
                     </button>
                 </form>
 
-                {/* 소셜 로그인 */}
-                <div className="mt-8">
-                    <div className="relative flex items-center justify-center mb-6">
-                        <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
-                        <span className="relative bg-white px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">또는 간편 로그인</span>
+                {/* 소셜 로그인 구분선 */}
+                <div className="relative flex items-center justify-center my-6">
+                    <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-gray-200" />
                     </div>
-
-                    <div className="grid grid-cols-3 gap-3">
-                        <button type="button" onClick={() => window.location.href = `${API_BASE_URL}/api/v1/auth/login/google`}
-                            className="flex items-center justify-center py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors" title="Google로 로그인">
-                            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
-                        </button>
-                        <button type="button" onClick={() => window.location.href = `${API_BASE_URL}/api/v1/auth/login/naver`}
-                            className="flex items-center justify-center py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors" title="Naver로 로그인">
-                            <span className="text-[#03C75A] font-black text-lg">N</span>
-                        </button>
-                        <button type="button" onClick={() => window.location.href = `${API_BASE_URL}/api/v1/auth/login/kakao`}
-                            className="flex items-center justify-center py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors" title="Kakao로 로그인">
-                            <svg viewBox="0 0 24 24" className="w-5 h-5 fill-[#FEE500]"><path d="M12 3c-4.97 0-9 3.185-9 7.115 0 2.553 1.706 4.8 4.27 6.054-.15.529-.544 1.923-.622 2.233-.098.397.13.392.274.301.114-.072 1.83-1.243 2.56-1.743.488.068.99.103 1.518.103 4.97 0 9-3.185 9-7.115S16.97 3 12 3z" /></svg>
-                        </button>
-                    </div>
+                    <span className="relative bg-white px-3 text-xs text-gray-400 uppercase tracking-wider">
+                        또는 간편 로그인
+                    </span>
                 </div>
 
-                <p className="mt-8 text-sm text-gray-500 text-center">
-                    아직 계정이 없으신가요?{' '}
-                    <button type="button" onClick={onNavigateToSignup} className="font-semibold text-blue-600 hover:text-blue-700 hover:underline">무료 회원가입</button>
+                {/* 소셜 버튼 */}
+                <div className="grid grid-cols-3 gap-3">
+                    <button
+                        type="button"
+                        onClick={() => window.location.href = `${API_BASE_URL}/api/v1/auth/login/google`}
+                        className="flex items-center justify-center py-2.5 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                        title="Google로 로그인"
+                    >
+                        <img
+                            src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                            alt="Google"
+                            className="w-5 h-5"
+                        />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => window.location.href = `${API_BASE_URL}/api/v1/auth/login/naver`}
+                        className="flex items-center justify-center py-2.5 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                        title="Naver로 로그인"
+                    >
+                        <span className="text-[#03C75A] font-black text-lg leading-none">N</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => window.location.href = `${API_BASE_URL}/api/v1/auth/login/kakao`}
+                        className="flex items-center justify-center py-2.5 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                        title="Kakao로 로그인"
+                    >
+                        <svg viewBox="0 0 24 24" className="w-5 h-5 fill-[#3C1E1E]">
+                            <path d="M12 3c-4.97 0-9 3.185-9 7.115 0 2.553 1.706 4.8 4.27 6.054-.15.529-.544 1.923-.622 2.233-.098.397.13.392.274.301.114-.072 1.83-1.243 2.56-1.743.488.068.99.103 1.518.103 4.97 0 9-3.185 9-7.115S16.97 3 12 3z" />
+                        </svg>
+                    </button>
+                </div>
+
+                {/* 하단 링크 */}
+                <p className="mt-7 text-center text-sm text-gray-500">
+                    계정이 없으신가요?{' '}
+                    <button
+                        type="button"
+                        onClick={onNavigateToSignup}
+                        className="font-semibold text-[#00C73C] hover:text-[#00b235] hover:underline transition-colors"
+                    >
+                        회원가입
+                    </button>
                 </p>
             </div>
 
-            <div className="absolute bottom-8 text-center text-xs text-gray-400">
-                &copy; 2026 Short-Cut AI. All rights reserved.
-            </div>
+            {/* 푸터 */}
+            <p className="mt-8 text-xs text-gray-400">© 2026 Short-Cut AI. All rights reserved.</p>
         </div>
     );
 }
