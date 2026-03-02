@@ -30,7 +30,8 @@ function App() {
     const [authView, setAuthView] = useState<'login' | 'signup'>('login');
     /** 게스트 유저 진입 상태 (AuthGuard 제어용) — Issue #GuestAccess */
     const [isGuest, setIsGuest] = useState<boolean>(() => {
-        return sessionStorage.getItem('isGuest') === 'true';
+        const saved = sessionStorage.getItem('isGuest');
+        return saved === null ? true : saved === 'true'; // Default to true if not set
     });
 
     // 세션 만료 메시지 처리

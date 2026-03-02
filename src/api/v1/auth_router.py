@@ -218,11 +218,9 @@ def handle_social_login(user_info: dict, provider: str, db: Session, response: R
     response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="lax", max_age=3600)
     response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite="lax", max_age=86400 * 7)
     
-    return {
-        "status": "success",
-        "message": f"{provider} 로그인에 성공하였습니다.",
-        "user": {"id": user.id, "email": user.email}
-    }
+    # SPA 환경이므로 프론트엔드 주소로 리다이렉트 (쿠키는 브라우저에 저장됨)
+    frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+    return RedirectResponse(url=frontend_url)
 
 @router.get("/callback/google")
 async def google_callback(code: str, response: Response, db: Session = Depends(get_db)):
