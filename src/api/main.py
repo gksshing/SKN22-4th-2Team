@@ -160,8 +160,8 @@ def create_app() -> FastAPI:
             }
         )
 
-    # 5. API Endpoints 라우터 통합 (auth 제거됨)
-    app.include_router(api_v1_router, prefix="/api/v1", tags=["analyze"])
+    # 5. API Endpoints 라우터 통합
+    app.include_router(api_v1_router, prefix="/api/v1")
 
     # 6. 프론트엔드 서빙 (Vanilla JS vs React dist 자동 감지)
     # React 빌드 산출물(dist)이 있으면 우선 서빙하고, 없으면 기본 frontend 폴더를 서빙합니다.
