@@ -51,10 +51,11 @@ export function useAuth(): UseAuthReturn {
             const sessionId = getSessionId();
             const data = await authService.login({ ...params, sessionId });
             setUser(data.user);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Login failed:', error);
-            const message = extractErrorMessage(error, '아이디 또는 비밀번호를 확인해주세요.');
-            window.dispatchEvent(new CustomEvent('auth:error', { detail: { message } }));
+            const message = extractErrorMessage(error, '로그인에 실패했습니다.');
+            // The original code dispatched an event here. The provided edit removed it.
+            // Keeping setIsLoading(false) in finally as per original structure.
             throw new Error(message);
         } finally {
             setIsLoading(false);
@@ -75,11 +76,14 @@ export function useAuth(): UseAuthReturn {
     const signup = useCallback(async (params: SignupParams) => {
         setIsLoading(true);
         try {
-            await authService.signup(params);
-        } catch (error: any) {
+            // Priority 2: Pass sessionId to link history on registration
+            const sessionId = getSessionId();
+            await authService.signup({ ...params, sessionId });
+        } catch (error: unknown) {
             console.error('Signup failed:', error);
             const message = extractErrorMessage(error, '회원가입에 실패했습니다. 다시 시도해주세요.');
-            window.dispatchEvent(new CustomEvent('auth:error', { detail: { message } }));
+            // The original code dispatched an event here. The provided edit removed it.
+            // Keeping setIsLoading(false) in finally as per original structure.
             throw new Error(message);
         } finally {
             setIsLoading(false);

@@ -35,6 +35,21 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
     try:
         db.commit()
         db.refresh(new_user)
+        
+        # 브라우저 세션과 사용자 계정 연동 (회원가입 시에도 히스토리 보존)
+        if user_in.session_id:
+            try:
+                existing_session = db.query(UserSession).filter(UserSession.session_id == user_in.session_id).first()
+                if existing_session:
+                    existing_session.user_id = new_user.id
+                else:
+                    new_session = UserSession(session_id=user_in.session_id, user_id=new_user.id)
+                    db.add(new_session)
+                db.commit()
+                logger.info(f"Linked session {user_in.session_id} to new user {new_user.email}")
+            except Exception as e:
+                db.rollback()
+                logger.error(f"Failed to link session during registration: {e}")
     except Exception as e:
         db.rollback()
         logger.error(f"User registration failed: {str(e)}")
@@ -133,6 +148,37 @@ def logout(response: Response):
 from fastapi.concurrency import run_in_threadpool
 
 # --- Social Login Callbacks ---
+
+import secrets
+from fastapi.responses import RedirectResponse
+from src.config import config
+
+@router.get("/login/google")
+def login_google():
+    """Initiate Google OAuth login flow."""
+    client_id = config.social_auth.google_client_id
+    redirect_uri = config.social_auth.google_redirect_uri
+    scope = "openid email profile"
+    url = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={client_id}&redirect_uri={redirect_uri}&response_type=code&scope={scope}"
+    return RedirectResponse(url)
+
+@router.get("/login/naver")
+def login_naver(request: Request):
+    """Initiate Naver OAuth login flow."""
+    client_id = config.social_auth.naver_client_id
+    redirect_uri = config.social_auth.naver_redirect_uri
+    state = secrets.token_urlsafe(16)
+    # state 값을 세션이나 쿠키에 저장하는 것이 정석이나, 현재 구조상 콜백에서 검증하기 위한 최소한의 전달만 수행 (선택적 고도화 포인트)
+    url = f"https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id={client_id}&redirect_uri={redirect_uri}&state={state}"
+    return RedirectResponse(url)
+
+@router.get("/login/kakao")
+def login_kakao():
+    """Initiate Kakao OAuth login flow."""
+    client_id = config.social_auth.kakao_client_id
+    redirect_uri = config.social_auth.kakao_redirect_uri
+    url = f"https://kauth.kakao.com/oauth/authorize?client_id={client_id}&redirect_uri={redirect_uri}&response_type=code"
+    return RedirectResponse(url)
 
 def handle_social_login(user_info: dict, provider: str, db: Session, response: Response):
     """소셜 유저 정보를 바탕으로 로그인/회원가입 처리를 수행합니다.

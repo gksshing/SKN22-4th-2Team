@@ -1,6 +1,6 @@
-export interface LoginParams {
+export interface SignupParams {
     email: string;
-    password?: string;
+    password: string;
     sessionId?: string;
 }
 
@@ -14,9 +14,10 @@ export interface LoginResponse {
     user: UserResponse;
 }
 
-export interface SignupParams {
+export interface LoginParams {
     email: string;
-    password?: string;
+    password: string;
+    sessionId?: string;
 }
 
 export interface AuthState {
