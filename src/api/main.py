@@ -42,7 +42,7 @@ from src.config import config
 
 from contextlib import asynccontextmanager
 from src.api.v1.router import router as api_v1_router
-from src.database.connection import Base, engine
+from src.database.connection import Base, get_engine, verify_db_connection
 from src.utils import configure_json_logging
 from src.api.middleware import SecurityMiddleware
 from src.security import PromptInjectionError
@@ -76,7 +76,15 @@ async def lifespan(app: FastAPI):
         # Database schema initialization
         logger.info("Initializing database schema...")
         from fastapi.concurrency import run_in_threadpool
-        await run_in_threadpool(Base.metadata.create_all, bind=engine)
+        # get_engine()을 호출해야 bootstrap_secrets() 이후 주입된 DATABASE_URL로 엔진이 생성됩니다.
+        await run_in_threadpool(Base.metadata.create_all, bind=get_engine())
+        
+        # DB 연결 검증 (RDS PostgreSQL 또는 SQLite 폴백 확인)
+        db_status = await run_in_threadpool(verify_db_connection)
+        if db_status["ok"]:
+            logger.info("DB 연결 검증 완료: type=%s, host=%s", db_status["db_type"], db_status["url_hint"])
+        else:
+            logger.error("DB 연결 검증 실패: %s", db_status.get("error"))
         logger.info("Database schema initialized.")
         
         logger.info("System health check: PASSED. Ready to receive traffic.")
@@ -202,8 +210,14 @@ def create_app() -> FastAPI:
 
     @app.get("/health")
     async def health_check():
-        """상태 점검 엔드포인트"""
-        return {"status": "ok", "message": "Healthy"}
+        """상태 점검 엔드포인트 (DB 연결 상태 포함)"""
+        from fastapi.concurrency import run_in_threadpool
+        db_status = await run_in_threadpool(verify_db_connection)
+        return {
+            "status": "ok",
+            "message": "Healthy",
+            "database": db_status,
+        }
 
     # API 라우트들을 먼저 등록한 후, 나머지 모든 경로를 정적 파일로 마운트
     # (이미 위에서 라우터들이 등록되었으므로 순서상 안전함)

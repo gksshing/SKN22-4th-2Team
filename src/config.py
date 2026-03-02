@@ -315,6 +315,27 @@ class PipelineConfig:
 
 
 # =============================================================================
+# Auth Configuration
+# =============================================================================
+
+@dataclass
+class AuthConfig:
+    """JWT 인증 설정 (Secrets Manager의 JWT_SECRET_KEY 환경 변수와 연동)"""
+
+    # JWT 서명 키: Secrets Manager의 JWT_SECRET_KEY에서 주입
+    secret_key: str = field(default_factory=lambda: os.environ.get("JWT_SECRET_KEY", "insecure-dev-secret-change-me"))
+    algorithm: str = "HS256"
+    # Access Token 만료 시간 (분)
+    access_token_expire_minutes: int = field(
+        default_factory=lambda: int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
+    )
+    # Refresh Token 만료 시간 (분, 7일 기본)
+    refresh_token_expire_minutes: int = field(
+        default_factory=lambda: int(os.environ.get("REFRESH_TOKEN_EXPIRE_MINUTES", "10080"))
+    )
+
+
+# =============================================================================
 # Logging Configuration
 # =============================================================================
 
@@ -354,6 +375,8 @@ class PatentGuardConfig:
     agent: AgentConfig = field(default_factory=AgentConfig)
     pipeline: PipelineConfig = field(default_factory=PipelineConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
+    # JWT 인증 설정 (security.py에서 config.auth.secret_key / config.auth.algorithm으로 참조)
+    auth: AuthConfig = field(default_factory=AuthConfig)
     frontend_url: str = field(default_factory=lambda: os.environ.get("FRONTEND_URL", "http://localhost:5173"))
 
 
