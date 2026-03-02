@@ -36,7 +36,8 @@ RUN npm ci
 
 # 전체 프론트엔드 소스코드 복사 및 빌드 진행
 COPY frontend/ ./
-RUN npm run build
+# dist 폴더가 있다면 삭제 후 새로 빌드하여 캐시 오염 방지
+RUN rm -rf dist && npm run build
 
 
 # ─── Stage 3: Runtime ────────────────────────────────────────────────────────
@@ -69,6 +70,7 @@ WORKDIR /app
 
 
 # ── 빌드 메타데이터 (CI/CD에서 --build-arg로 주입) ────────────────────────
+# (생략 가능하나 유지를 위해 남겨둠)
 ARG BUILD_DATE=unknown
 ARG GIT_COMMIT=unknown
 ARG GIT_BRANCH=unknown
@@ -80,7 +82,9 @@ ENV BUILD_DATE=${BUILD_DATE} \
 COPY src/ ./src/
 
 # Frontend 빌더 스테이지에서 생성된 정적 결과물(html, js, css)만 복사
+# dist 정적 파일이 확실히 존재함을 보장하기 위해 COPY 후 구조를 유지합니다.
 COPY --from=frontend-builder /app/frontend/dist/ ./frontend/dist/
+# 레거시 frontend 소스가 복사되는 것을 방지하고 오직 dist만 서빙하도록 구조화 (main.py 수동 대응 완료)
 
 # ── entrypoint 스크립트 복사 및 실행 권한 설정 ────────────────────────────
 COPY entrypoint.sh /entrypoint.sh
