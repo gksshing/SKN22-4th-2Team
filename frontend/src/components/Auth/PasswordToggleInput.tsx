@@ -6,38 +6,47 @@
  * - LoginForm, SignupForm에서 공통 사용
  */
 
-import React, { useState, InputHTMLAttributes } from 'react';
+import { useState, InputHTMLAttributes } from 'react';
 
 interface PasswordToggleInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
     /** 에러 상태 여부 — 빨간 테두리 적용 */
-    hasError?: boolean;
+    isError?: boolean;
 }
 
-export function PasswordToggleInput({ hasError = false, className = '', ...rest }: PasswordToggleInputProps) {
-    const [isVisible, setIsVisible] = useState(false);
+/**
+ * 눈 아이콘 토글이 포함된 비밀번호 입력창
+ */
+export function PasswordToggleInput({ isError, className = '', ...props }: PasswordToggleInputProps) {
+    const [showPassword, setShowPassword] = useState(false);
 
-    const inputClass = `w-full px-4 py-3 text-gray-800 placeholder-gray-400
-        focus:outline-none transition-colors
-        bg-transparent
-        disabled:opacity-50 disabled:cursor-not-allowed ${className}`;
+    const togglePassword = () => setShowPassword(!showPassword);
 
     return (
-        <div className="relative w-full flex items-center">
+        <div className="relative w-full">
             <input
-                {...rest}
-                type={isVisible ? 'text' : 'password'}
-                className={inputClass}
+                {...props}
+                type={showPassword ? 'text' : 'password'}
+                className={`
+          w-full px-4 py-3 bg-white border rounded-[12px] 
+          text-[15px] font-medium outline-none transition-all
+          placeholder:text-gray-300
+          ${isError
+                        ? 'border-red-500 focus:ring-red-100'
+                        : 'border-gray-200 focus:ring-2 focus:ring-[#2563EB] focus:border-[#2563EB]'}
+          ${className}
+        `}
             />
-            {/* 표시/숨기기 토글 버튼 */}
             <button
                 type="button"
-                aria-label={isVisible ? '비밀번호 숨기기' : '비밀번호 표시'}
-                onClick={() => setIsVisible((v) => !v)}
-                className="absolute right-0 top-1/2 -translate-y-1/2
-                    text-gray-400 hover:text-gray-600 transition-colors
-                    focus:outline-none text-[13px] font-bold pr-2"
+                onClick={togglePassword}
+                aria-label={showPassword ? '비밀번호 숨기기' : '비밀번호 표시'}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
             >
-                {isVisible ? '숨김' : '표시'}
+                {showPassword ? (
+                    <span className="text-[18px]">👁️</span>
+                ) : (
+                    <span className="text-[18px]">👁️‍🗨️</span>
+                )}
             </button>
         </div>
     );
