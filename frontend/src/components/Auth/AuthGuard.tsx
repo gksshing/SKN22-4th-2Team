@@ -1,14 +1,16 @@
 import { ReactNode } from 'react';
 import { SignupForm } from './SignupForm';
 import { LoginForm } from './LoginForm';
+import { User } from '../../types/auth';
 
 interface AuthGuardProps {
     children: ReactNode;
     isGuest: boolean;
     setIsGuest: (v: boolean) => void;
     authView: 'login' | 'signup';
-    user: any; // useAuth에서 가져온 user 객체
+    user: User; // useAuth에서 가져온 user 객체
 }
+
 
 /**
  * 전역 인증 가드 컴포넌트
