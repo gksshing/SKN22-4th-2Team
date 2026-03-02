@@ -11,9 +11,12 @@ from src.patent_agent import PatentAgent
 from src.history_manager import HistoryManager
 import logging
 
+from src.api.v1.auth_router import router as auth_router
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+router.include_router(auth_router)
 
 @router.post("/analyze", summary="특허 분석 요청 (SSE 스트리밍 연동)")
 async def analyze_patent(
