@@ -23,6 +23,9 @@
    - 모든 컴포넌트 파일에서 미사용 `React` 임포트 전수 제거.
    - 코드 가독성 향상을 위한 헤더 주석 정돈 및 중복 제거.
 
+4. **Prop Mismatch Fix (LoginForm.tsx)**
+   - `PasswordToggleInput` 컴포넌트에 `hasError` 대신 정의된 `isError` 프로퍼티를 사용하도록 수정하여 빌드 오류 해결.
+
 #### 🚀 기대 효과
 
 - 상용 CI/CD 파이프라인(Docker 빌드) 정상 통과.
