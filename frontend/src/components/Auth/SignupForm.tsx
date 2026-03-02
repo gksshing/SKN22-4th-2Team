@@ -10,7 +10,7 @@
  * - 회원가입 성공 → 1.5초 성공 메시지 → onNavigateToLogin 호출
  */
 
-import React, { useState, useCallback, FormEvent, ChangeEvent } from 'react';
+import { useState, useCallback, FormEvent, ChangeEvent } from 'react';
 import {
     validateEmail,
     validatePassword,
@@ -35,7 +35,7 @@ interface FormErrors {
     submit?: string;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 export function SignupForm({ onSuccess, onNavigateToLogin, onSignup, onGuest, isLoading }: SignupFormProps) {
     const [email, setEmail] = useState('');
@@ -48,6 +48,14 @@ export function SignupForm({ onSuccess, onNavigateToLogin, onSignup, onGuest, is
 
     const isConfirmMatch = confirmPassword.length > 0 && confirmPassword === password;
     const isConfirmMismatch = confirmPassword.length > 0 && confirmPassword !== password;
+
+    const handleGoogleSignup = useCallback(() => {
+        window.location.href = `${API_BASE_URL}/api/v1/auth/login/google`;
+    }, []);
+
+    const handleNaverSignup = useCallback(() => {
+        window.location.href = `${API_BASE_URL}/api/v1/auth/login/naver`;
+    }, []);
 
     const handleEmailBlur = useCallback(() => {
         const r = validateEmail(email);
@@ -220,6 +228,33 @@ export function SignupForm({ onSuccess, onNavigateToLogin, onSignup, onGuest, is
                         </button>
                     )}
                 </form>
+
+                {/* Social Signup Buttons (Design Consistency) */}
+                <div className="mt-8">
+                    <div className="relative flex items-center justify-center mb-6">
+                        <div className="absolute inset-0 flex items-center px-2"><div className="w-full border-t border-gray-200" /></div>
+                        <span className="relative bg-white px-4 text-[12px] font-bold text-gray-400">간편 가입하기</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <button
+                            type="button"
+                            onClick={handleGoogleSignup}
+                            className="flex items-center justify-center gap-3 py-3 bg-white border border-gray-200 rounded-[12px] hover:bg-gray-50 transition-all font-bold text-gray-700 text-[14px] shadow-sm active:scale-[0.98]"
+                        >
+                            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
+                            Google
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleNaverSignup}
+                            className="flex items-center justify-center gap-3 py-3 bg-[#03C75A] border border-[#02b351] rounded-[12px] hover:bg-[#02b351] transition-all font-bold text-white text-[14px] shadow-sm active:scale-[0.98]"
+                        >
+                            <span className="font-black text-[16px]">N</span>
+                            Naver
+                        </button>
+                    </div>
+                </div>
 
                 <p className="mt-10 text-center text-[14px] text-gray-500 font-medium">
                     이미 계정이 있으신가요?{' '}
