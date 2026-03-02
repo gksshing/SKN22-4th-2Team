@@ -332,15 +332,15 @@ class SocialAuthConfig:
     """OAuth2 Social Login configuration."""
     google_client_id: Optional[str] = field(default_factory=lambda: os.environ.get("GOOGLE_CLIENT_ID"))
     google_client_secret: Optional[str] = field(default_factory=lambda: os.environ.get("GOOGLE_CLIENT_SECRET"))
-    google_redirect_uri: Optional[str] = field(default_factory=lambda: os.environ.get("GOOGLE_REDIRECT_URI"))
+    google_redirect_uri: Optional[str] = field(default_factory=lambda: os.environ.get("GOOGLE_REDIRECT_URI", "http://localhost:8000/api/v1/auth/callback/google"))
     
     naver_client_id: Optional[str] = field(default_factory=lambda: os.environ.get("NAVER_CLIENT_ID"))
     naver_client_secret: Optional[str] = field(default_factory=lambda: os.environ.get("NAVER_CLIENT_SECRET"))
-    naver_redirect_uri: Optional[str] = field(default_factory=lambda: os.environ.get("NAVER_REDIRECT_URI"))
+    naver_redirect_uri: Optional[str] = field(default_factory=lambda: os.environ.get("NAVER_REDIRECT_URI", "http://localhost:8000/api/v1/auth/callback/naver"))
     
     kakao_client_id: Optional[str] = field(default_factory=lambda: os.environ.get("KAKAO_CLIENT_ID"))
     kakao_client_secret: Optional[str] = field(default_factory=lambda: os.environ.get("KAKAO_CLIENT_SECRET"))
-    kakao_redirect_uri: Optional[str] = field(default_factory=lambda: os.environ.get("KAKAO_REDIRECT_URI"))
+    kakao_redirect_uri: Optional[str] = field(default_factory=lambda: os.environ.get("KAKAO_REDIRECT_URI", "http://localhost:8000/api/v1/auth/callback/kakao"))
 
 # =============================================================================
 # Logging Configuration

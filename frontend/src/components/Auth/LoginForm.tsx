@@ -40,12 +40,12 @@ export function LoginForm({ onSuccess, onNavigateToSignup, onLogin, onGuest, isL
 
     const handleEmailBlur = useCallback(() => {
         const r = validateEmail(email);
-        setErrors((p) => ({ ...p, email: r === true ? undefined : r }));
+        setErrors((p: FormErrors) => ({ ...p, email: r === true ? undefined : r }));
     }, [email]);
 
     const handlePasswordBlur = useCallback(() => {
         const r = validatePassword(password);
-        setErrors((p) => ({ ...p, password: r === true ? undefined : r }));
+        setErrors((p: FormErrors) => ({ ...p, password: r === true ? undefined : r }));
     }, [password]);
 
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -67,7 +67,6 @@ export function LoginForm({ onSuccess, onNavigateToSignup, onLogin, onGuest, isL
             await onLogin({ email, password });
             onSuccess();
         } catch {
-            // 계정 열거 공격 방어: 실패 원인 노출 없이 단일 메시지
             setErrors({ submit: '아이디 또는 비밀번호를 확인해주세요.' });
         } finally {
             setIsSubmitting(false);
@@ -77,27 +76,27 @@ export function LoginForm({ onSuccess, onNavigateToSignup, onLogin, onGuest, isL
     const isDisabled = isSubmitting || isLoading;
 
     return (
-        /* ── 전체 화면 래퍼: 라이트 연회색 배경, 수직 중앙 정렬 ── */
-        <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#F8FAFC] px-4">
+        <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#f0f4f8] px-4 overflow-hidden relative">
+            {/* Background Decorative Elements */}
+            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-400/20 rounded-full blur-[120px] animate-float" />
+            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald-400/20 rounded-full blur-[120px] animate-float" style={{ animationDelay: '-3s' }} />
 
-            {/* ── 브랜드 헤더 (카드 외부 상단) ── */}
-            <div className="text-center mb-8">
-                <h1 className="text-3xl font-black text-gray-900 tracking-tight">✂️ Short-Cut</h1>
-                <p className="text-gray-500 text-sm mt-1">AI 특허 아이디어 검증 서비스</p>
+            {/* Brand Header */}
+            <div className="text-center mb-10 z-10">
+                <h1 className="text-4xl font-black text-gray-900 tracking-tighter flex items-center justify-center gap-2">
+                    <span className="bg-gradient-to-r from-blue-600 to-emerald-500 bg-clip-text text-transparent">Short-Cut</span>
+                </h1>
+                <p className="text-gray-500 font-medium mt-2">AI 기반 특허 아이디어 분석 서비스</p>
             </div>
 
-            {/* ── 로그인 카드 ── */}
-            <div className="w-full max-w-md bg-white rounded-2xl border border-gray-200 shadow-md px-10 py-10">
+            {/* Login Card (Glassmorphism) */}
+            <div className="w-full max-w-md glass-panel rounded-[2rem] p-8 sm:p-12 z-10 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(0,0,0,0.1)]">
+                <h2 className="text-2xl font-bold text-gray-800 mb-8 text-center tracking-tight">반가워요! 다시 오셨군요 👋</h2>
 
-                <h2 className="text-xl font-bold text-gray-800 mb-6 text-center">로그인</h2>
-
-                <form onSubmit={handleSubmit} noValidate className="space-y-4">
-
-                    {/* 이메일 */}
-                    <div>
-                        <label htmlFor="login-email" className="block text-sm font-medium text-gray-700 mb-1.5">
-                            이메일
-                        </label>
+                <form onSubmit={handleSubmit} noValidate className="space-y-6">
+                    {/* Email Input */}
+                    <div className="space-y-2">
+                        <label htmlFor="login-email" className="block text-sm font-semibold text-gray-600 ml-1">이메일</label>
                         <input
                             id="login-email"
                             type="email"
@@ -106,26 +105,21 @@ export function LoginForm({ onSuccess, onNavigateToSignup, onLogin, onGuest, isL
                             onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                             onBlur={handleEmailBlur}
                             disabled={isDisabled}
-                            placeholder="example@email.com"
-                            className={`w-full px-4 py-3 rounded-lg border text-gray-800 placeholder-gray-400 text-sm
-                                focus:outline-none focus:ring-1 transition-colors
-                                ${errors.email
-                                    ? 'border-red-400 bg-red-50 focus:border-red-500 focus:ring-red-200'
-                                    : 'border-gray-300 bg-white focus:border-[#00C73C] focus:ring-green-100'}
-                                disabled:opacity-50 disabled:cursor-not-allowed`}
+                            placeholder="you@example.com"
+                            className={`w-full px-5 py-3.5 rounded-2xl glass-input border-2 transition-all duration-300
+                                ${errors.email ? 'border-red-400/50 bg-red-50/30' : 'border-white/50 focus:border-blue-400/50'}
+                                disabled:opacity-50 outline-none shadow-sm`}
                         />
                         {errors.email && (
-                            <p role="alert" className="mt-1.5 text-xs text-red-500 flex items-center gap-1">
+                            <p role="alert" className="text-xs text-red-500 font-medium flex items-center gap-1 mt-1 ml-1 animate-in slide-in-from-left-2 duration-300">
                                 <span>⚠</span> {errors.email}
                             </p>
                         )}
                     </div>
 
-                    {/* 비밀번호 — PasswordToggleInput 으로 show/hide 토글 */}
-                    <div>
-                        <label htmlFor="login-password" className="block text-sm font-medium text-gray-700 mb-1.5">
-                            비밀번호
-                        </label>
+                    {/* Password Input */}
+                    <div className="space-y-2">
+                        <label htmlFor="login-password" className="block text-sm font-semibold text-gray-600 ml-1">비밀번호</label>
                         <PasswordToggleInput
                             id="login-password"
                             autoComplete="current-password"
@@ -135,112 +129,90 @@ export function LoginForm({ onSuccess, onNavigateToSignup, onLogin, onGuest, isL
                             disabled={isDisabled}
                             placeholder="비밀번호를 입력하세요"
                             hasError={!!errors.password}
-                            className={`bg-white text-sm ${errors.password
-                                ? 'border-red-400 focus:border-red-500 focus:ring-red-200'
-                                : 'border-gray-300 focus:border-[#00C73C] focus:ring-green-100'}`}
+                            className={`rounded-2xl glass-input border-2 px-5 py-3.5 ${errors.password ? 'border-red-400/50 bg-red-50/30' : 'border-white/50'}`}
                         />
                         {errors.password && (
-                            <p role="alert" className="mt-1.5 text-xs text-red-500 flex items-center gap-1">
+                            <p role="alert" className="text-xs text-red-500 font-medium flex items-center gap-1 mt-1 ml-1 animate-in slide-in-from-left-2 duration-300">
                                 <span>⚠</span> {errors.password}
                             </p>
                         )}
                     </div>
 
-                    {/* 서밋 에러 (버튼 위) */}
+                    {/* Submit Error */}
                     {errors.submit && (
-                        <div
-                            role="alert"
-                            className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600 text-center font-medium"
-                        >
+                        <div role="alert" className="p-4 bg-red-50/80 backdrop-blur-md border border-red-200 text-red-600 rounded-xl text-sm font-semibold text-center animate-in fade-in duration-300">
                             {errors.submit}
                         </div>
                     )}
 
-                    {/* 로그인 CTA 버튼 */}
+                    {/* Login Button */}
                     <button
                         type="submit"
                         disabled={isDisabled}
-                        className="w-full py-3 bg-[#00C73C] hover:bg-[#00b235] active:scale-[0.98] text-white font-bold text-sm rounded-lg
-                            transition-all duration-150 mt-2
-                            disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100
-                            flex items-center justify-center gap-2"
+                        className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-bold rounded-2xl
+                            transition-all duration-300 active:scale-[0.98] shadow-lg shadow-blue-200 flex items-center justify-center gap-2
+                            disabled:opacity-50 disabled:active:scale-100"
                     >
-                        {isSubmitting
-                            ? <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> 로그인 중...</>
-                            : '로그인'}
+                        {isSubmitting ? (
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : '로그인'}
                     </button>
 
-                    {/* 비회원 이용 (Guest Mode) — Issue #GuestAccess */}
+                    {/* Guest Mode Link */}
                     {onGuest && (
                         <button
                             type="button"
                             onClick={onGuest}
-                            className="w-full py-2.5 text-gray-500 hover:text-gray-700 font-medium text-sm transition-colors"
+                            className="w-full py-2 text-gray-400 hover:text-gray-600 font-medium text-sm transition-all hover:underline"
                         >
-                            비회원으로 이용하기 (Guest Mode)
+                            비회원으로 둘러보기 (Guest Mode)
                         </button>
                     )}
                 </form>
 
-                {/* 소셜 로그인 구분선 */}
-                <div className="relative flex items-center justify-center my-6">
-                    <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-gray-200" />
-                    </div>
-                    <span className="relative bg-white px-3 text-xs text-gray-400 uppercase tracking-wider">
-                        또는 간편 로그인
+                {/* Social Login Divider */}
+                <div className="relative flex items-center justify-center my-10">
+                    <div className="absolute inset-0 flex items-center px-2"><div className="w-full border-t border-gray-200/50" /></div>
+                    <span className="relative bg-white/20 backdrop-blur-md px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                        OR CONTINUE WITH
                     </span>
                 </div>
 
-                {/* 소셜 버튼 */}
-                <div className="grid grid-cols-3 gap-3">
+                {/* Social Login Buttons */}
+                <div className="grid grid-cols-2 gap-4">
                     <button
                         type="button"
                         onClick={() => window.location.href = `${API_BASE_URL}/api/v1/auth/login/google`}
-                        className="flex items-center justify-center py-2.5 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                        title="Google로 로그인"
+                        className="flex items-center justify-center gap-3 py-3 px-4 glass-panel rounded-2xl hover:bg-white/80 transition-all duration-300 group border-white/40"
                     >
-                        <img
-                            src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-                            alt="Google"
-                            className="w-5 h-5"
-                        />
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                        <span className="text-sm font-bold text-gray-700">Google</span>
                     </button>
                     <button
                         type="button"
                         onClick={() => window.location.href = `${API_BASE_URL}/api/v1/auth/login/naver`}
-                        className="flex items-center justify-center py-2.5 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                        title="Naver로 로그인"
+                        className="flex items-center justify-center gap-3 py-3 px-4 bg-[#03C75A] hover:bg-[#02b351] rounded-2xl transition-all duration-300 group shadow-md shadow-green-100"
                     >
-                        <span className="text-[#03C75A] font-black text-lg leading-none">N</span>
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => window.location.href = `${API_BASE_URL}/api/v1/auth/login/kakao`}
-                        className="flex items-center justify-center py-2.5 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                        title="Kakao로 로그인"
-                    >
-                        <svg viewBox="0 0 24 24" className="w-5 h-5 fill-[#3C1E1E]">
-                            <path d="M12 3c-4.97 0-9 3.185-9 7.115 0 2.553 1.706 4.8 4.27 6.054-.15.529-.544 1.923-.622 2.233-.098.397.13.392.274.301.114-.072 1.83-1.243 2.56-1.743.488.068.99.103 1.518.103 4.97 0 9-3.185 9-7.115S16.97 3 12 3z" />
-                        </svg>
+                        <span className="text-white font-black text-lg group-hover:scale-110 transition-transform">N</span>
+                        <span className="text-sm font-bold text-white">Naver</span>
                     </button>
                 </div>
 
-                {/* 하단 링크 */}
-                <p className="mt-7 text-center text-sm text-gray-500">
-                    계정이 없으신가요?{' '}
+                {/* Footer Links */}
+                <p className="mt-10 text-center text-sm text-gray-500 font-medium">
+                    아직 계정이 없으신가요?{' '}
                     <button
                         type="button"
                         onClick={onNavigateToSignup}
-                        className="font-semibold text-[#00C73C] hover:text-[#00b235] hover:underline transition-colors"
+                        className="text-blue-600 font-bold hover:underline transition-all"
                     >
                         회원가입
                     </button>
                 </p>
             </div>
 
-            {/* 푸터 */}
-            <p className="mt-8 text-xs text-gray-400">© 2026 Short-Cut AI. All rights reserved.</p>
+            {/* Simple Footer */}
+            <p className="mt-8 text-xs text-gray-400 font-medium z-10 opacity-70">© 2026 Short-Cut AI. Built for Innovators.</p>
         </div>
     );
 }
