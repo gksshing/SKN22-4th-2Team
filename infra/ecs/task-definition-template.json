@@ -22,6 +22,30 @@
                 {
                     "name": "SECRET_NAME",
                     "value": "short-cut/prod/app"
+                },
+                {
+                    "name": "GOOGLE_CLIENT_ID",
+                    "value": "GOOGLE_CLIENT_ID_PLACEHOLDER"
+                },
+                {
+                    "name": "GOOGLE_CLIENT_SECRET",
+                    "value": "GOOGLE_CLIENT_SECRET_PLACEHOLDER"
+                },
+                {
+                    "name": "NAVER_CLIENT_ID",
+                    "value": "NAVER_CLIENT_ID_PLACEHOLDER"
+                },
+                {
+                    "name": "NAVER_CLIENT_SECRET",
+                    "value": "NAVER_CLIENT_SECRET_PLACEHOLDER"
+                },
+                {
+                    "name": "KAKAO_CLIENT_ID",
+                    "value": "KAKAO_CLIENT_ID_PLACEHOLDER"
+                },
+                {
+                    "name": "KAKAO_CLIENT_SECRET",
+                    "value": "KAKAO_CLIENT_SECRET_PLACEHOLDER"
                 }
             ],
             "logConfiguration": {

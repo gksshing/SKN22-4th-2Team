@@ -43,6 +43,7 @@ from src.config import config
 from contextlib import asynccontextmanager
 from src.api.v1.router import router as api_v1_router
 from src.api.v1.auth_router import router as auth_router
+from src.database.connection import Base, engine
 from src.utils import configure_json_logging
 from src.api.middleware import SecurityMiddleware
 from src.security import PromptInjectionError
@@ -72,6 +73,12 @@ async def lifespan(app: FastAPI):
         # NLTK 데이터 경로 확인 (Dockerfile ENV와 동기화 확인용)
         import nltk
         logger.info(f"NLTK Data Paths: {nltk.data.path}")
+        
+        # Database schema initialization
+        logger.info("Initializing database schema...")
+        from fastapi.concurrency import run_in_threadpool
+        await run_in_threadpool(Base.metadata.create_all, bind=engine)
+        logger.info("Database schema initialized.")
         
         logger.info("System health check: PASSED. Ready to receive traffic.")
     except Exception as e:

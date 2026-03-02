@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { RagAnalysisResult, StreamEventType, StreamProgressData, StreamCompleteData } from '../types/rag';
+import { RagAnalysisResult } from '../types/rag';
 import { getSessionId } from '../utils/session';
 import type { ErrorType } from '../components/common/ErrorFallback';
 
@@ -57,7 +57,7 @@ export function useRagStream() {
             // 백엔드 AnalyzeRequest 스키마 필드명에 맞춰 요청 Body 구성
             const reqBody = {
                 user_idea: userIdea,
-                session_id: getSessionId(), // UUID 세션 ID 사용 (Issue #24)
+                user_id: getSessionId(), // UUID 세션 ID 사용 (Issue #24)
                 use_hybrid: useHybrid,
                 ipc_filters: ipcFilters && ipcFilters.length > 0 ? ipcFilters : null,
                 stream: true,
@@ -70,31 +70,20 @@ export function useRagStream() {
                     'Accept': 'text/event-stream',
                     'X-Session-ID': getSessionId(), // Issue #24: 세션 식별자 헤더
                 },
-                credentials: 'include', // Cookie 인증 사용 (Set-Cookie 대응)
                 body: JSON.stringify(reqBody),
                 signal: abortController.signal
             });
 
             if (!response.ok) {
-                let errorMsg = 'NETWORK_ERROR';
-                try {
-                    const errData = await response.json();
-                    if (errData.detail) {
-                        errorMsg = typeof errData.detail === 'string'
-                            ? errData.detail
-                            : (Array.isArray(errData.detail) ? errData.detail[0].msg : 'NETWORK_ERROR');
-                    }
-                } catch { /* ignore parsing error */ }
-
                 // HTTP Status 분기 처리
                 if (response.status === 429) {
-                    throw new Error('RATE_LIMIT');
+                    throw new Error('RATE_LIMIT'); // Issue #25: Rate Limit 초과 전용 에러
                 } else if (response.status === 413 || response.status === 422) {
-                    throw new Error(errorMsg !== 'NETWORK_ERROR' ? errorMsg : 'TOKEN_EXCEEDED');
+                    throw new Error('TOKEN_EXCEEDED');
                 } else if (response.status === 404) {
                     throw new Error('NOT_FOUND');
                 } else {
-                    throw new Error(errorMsg);
+                    throw new Error('NETWORK_ERROR');
                 }
             }
 
@@ -105,6 +94,9 @@ export function useRagStream() {
             const reader = response.body.getReader();
             const decoder = new TextDecoder('utf-8');
             let buffer = '';
+            // Issue #51 임시 대응: Backend가 현재 NDJSON(\n 단위 JSON)을 내려줌
+            // TODO(Backend-SSE-전환 후): 아래 파서를 SSE(\n\n + event:/data: 방식)로 원복
+            let ndjsonPercent = 0; // percent 필드가 없을 경우 단계별 추정값
 
             while (true) {
                 const { value, done } = await reader.read();
@@ -113,64 +105,73 @@ export function useRagStream() {
                 // 청크 디코딩 후 버퍼에 누적
                 buffer += decoder.decode(value, { stream: true });
 
-                // SSE 스트림 라인 단위(\n\n) 처리
-                const lines = buffer.split('\n\n');
-
-                // 마지막 묶음은 아직 불완전할 수 있으므로 다시 버퍼에 남김
+                // [임시] NDJSON: \n 단위로 라인 분리 (SSE라면 \n\n 단위)
+                const lines = buffer.split('\n');
+                // 마지막 줄은 아직 불완전할 수 있으므로 버퍼에 남김
                 buffer = lines.pop() || '';
 
                 for (const line of lines) {
-                    if (line.trim() === '') continue;
+                    if (!line.trim()) continue;
 
-                    const eventMatch = line.match(/event:\s*([^\n]+)/);
-                    const dataMatch = line.match(/data:\s*([^\n]+)/);
-
-                    let eventType: StreamEventType = 'message';
-                    let dataStr = '';
-
-                    if (eventMatch && dataMatch) {
-                        eventType = eventMatch[1].trim() as StreamEventType;
-                        dataStr = dataMatch[1].trim();
-                    } else if (line.startsWith('data:')) {
-                        dataStr = line.replace('data:', '').trim();
+                    // SSE 표준 "data: ..." 형식도 같이 허용 (Backend 전환 시 자연스럽게 호환)
+                    let dataStr = line.trim();
+                    if (dataStr.startsWith('data:')) {
+                        dataStr = dataStr.replace(/^data:\s*/, '').trim();
+                    }
+                    if (!dataStr || dataStr.startsWith('event:') || dataStr.startsWith(':')) {
+                        continue; // event:, 주석 라인 무시
                     }
 
-                    if (dataStr) {
-                        try {
-                            const parsedData = JSON.parse(dataStr);
+                    try {
+                        const parsed = JSON.parse(dataStr);
 
-                            // event 가 progress 거나, event가 message 인데 status 필드가 있는 경우 (하위 호환성)
-                            if (eventType === 'progress' || (eventType as string === 'message' && parsedData.percent !== undefined)) {
-                                const progress = parsedData as StreamProgressData;
-                                setPercent(progress.percent || 0);
-                                setMessage(progress.message || '');
-
-                                // 스켈레톤 숨김 처리 (10% 이상 진행 시)
-                                if (progress.percent >= 10) {
-                                    setIsSkeletonVisible(false);
-                                }
-                            } else if (eventType === 'complete') {
-                                const completion = parsedData as StreamCompleteData;
+                        // ── SSE 표준 방식 처리 (event type 기반) ──
+                        // Backend가 SSE로 전환하면 이 블록이 자동으로 동작
+                        if (parsed.percent !== undefined) {
+                            // percent 필드가 존재하면 SSE progress 방식
+                            if (parsed.percent >= 10) setIsSkeletonVisible(false);
+                            setPercent(parsed.percent);
+                            setMessage(parsed.message || '분석 중...');
+                        } else if (parsed.result !== undefined) {
+                            // SSE complete 방식
+                            setPercent(100);
+                            setMessage('분석이 모두 완료되었습니다.');
+                            setResultData(parsed.result);
+                            setTimeout(() => {
+                                setIsAnalyzing(false);
+                                setIsComplete(true);
+                            }, 1500);
+                        }
+                        // ── NDJSON 임시 방식 처리 (status 필드 기반) ──
+                        else if (parsed.status !== undefined) {
+                            if (parsed.status === 'processing') {
+                                // 첫 청크 도착 시 스켈레톤 숨김
+                                setIsSkeletonVisible(false);
+                                ndjsonPercent = Math.min(ndjsonPercent + 15, 40);
+                                setPercent(ndjsonPercent);
+                                setMessage(parsed.message || '분석을 시작합니다...');
+                            } else if (parsed.status === 'searching') {
+                                ndjsonPercent = Math.min(ndjsonPercent + 25, 80);
+                                setPercent(ndjsonPercent);
+                                setMessage(parsed.message || '특허 DB 검색 중...');
+                            } else if (parsed.status === 'complete') {
                                 setPercent(100);
                                 setMessage('분석이 모두 완료되었습니다.');
-                                setResultData(completion.result);
-
+                                if (parsed.result) setResultData(parsed.result);
                                 setTimeout(() => {
                                     setIsAnalyzing(false);
                                     setIsComplete(true);
                                 }, 1500);
-                            } else if (eventType === 'empty' || parsedData.status === 'empty') {
+                            } else if (parsed.status === 'empty') {
                                 throw new Error('NOT_FOUND');
-                            } else if (eventType === 'error' || parsedData.error) {
-                                // 백엔드에서 에러 메시지를 detail 필드에 담아주는 경우 대응
-                                throw new Error(parsedData.detail || parsedData.error || 'NETWORK_ERROR');
+                            } else if (parsed.status === 'error') {
+                                throw new Error('NETWORK_ERROR');
                             }
-                        } catch (e: any) {
-                            if (e.message === 'NOT_FOUND' || e.message === 'NETWORK_ERROR') throw e;
-                            // 에러 필드가 있다면 해당 메시지로 throw
-                            if (e.message) throw e;
-                            console.error('SSE JSON Parsing Error:', e, 'Raw Data:', dataStr);
                         }
+                    } catch (e: any) {
+                        if (e.message === 'NOT_FOUND' || e.message === 'NETWORK_ERROR') throw e;
+                        // JSON 파싱 실패 — 원문 노출 방지를 위해 무시
+                        console.warn('[useRagStream] JSON 파싱 실패 (무시):', line.substring(0, 80));
                     }
                 }
             }
