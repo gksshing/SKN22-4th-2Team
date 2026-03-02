@@ -341,6 +341,7 @@ class SocialAuthConfig:
     kakao_client_id: Optional[str] = field(default_factory=lambda: os.environ.get("KAKAO_CLIENT_ID"))
     kakao_client_secret: Optional[str] = field(default_factory=lambda: os.environ.get("KAKAO_CLIENT_SECRET"))
     kakao_redirect_uri: Optional[str] = field(default_factory=lambda: os.environ.get("KAKAO_REDIRECT_URI", "http://localhost:8000/api/v1/auth/callback/kakao"))
+    frontend_url: str = field(default_factory=lambda: os.environ.get("FRONTEND_URL", "http://localhost:5173"))
 
 # =============================================================================
 # Logging Configuration
@@ -380,6 +381,7 @@ class PatentGuardConfig:
     pipeline: PipelineConfig = field(default_factory=PipelineConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
     social_auth: SocialAuthConfig = field(default_factory=SocialAuthConfig)
+    frontend_url: str = field(default_factory=lambda: os.environ.get("FRONTEND_URL", "http://localhost:5173"))
 
 
 # =============================================================================
@@ -469,6 +471,10 @@ def update_config_from_env() -> PatentGuardConfig:
         config.social_auth.kakao_client_secret = os.environ["KAKAO_CLIENT_SECRET"]
     if os.environ.get("KAKAO_REDIRECT_URI"):
         config.social_auth.kakao_redirect_uri = os.environ["KAKAO_REDIRECT_URI"]
+    
+    if os.environ.get("FRONTEND_URL"):
+        config.social_auth.frontend_url = os.environ["FRONTEND_URL"]
+        config.frontend_url = os.environ["FRONTEND_URL"]
 
     return config
 
