@@ -42,7 +42,6 @@ from src.config import config
 
 from contextlib import asynccontextmanager
 from src.api.v1.router import router as api_v1_router
-from src.api.v1.auth_router import router as auth_router
 from src.database.connection import Base, engine
 from src.utils import configure_json_logging
 from src.api.middleware import SecurityMiddleware
@@ -161,8 +160,7 @@ def create_app() -> FastAPI:
             }
         )
 
-    # 5. API Endpoints 라우터 통합
-    app.include_router(auth_router, prefix="/api/v1")
+    # 5. API Endpoints 라우터 통합 (auth 제거됨)
     app.include_router(api_v1_router, prefix="/api/v1", tags=["analyze"])
 
     # 6. 프론트엔드 서빙 (Vanilla JS vs React dist 자동 감지)
