@@ -1,18 +1,4 @@
-/**
- * 비밀번호 복잡도 강도 바 컴포넌트 (Issue #47)
- *
- * 4단계 강도 표시:
- * - 1단계 (점수 1): 매우 약함 (빨강)
- * - 2단계 (점수 2): 약함 (주황)
- * - 3단계 (점수 3): 보통 (노랑)
- * - 4단계 (점수 4): 강함 (초록)
- *
- * 점수 계산 기준:
- * +1: 8자 이상
- * +1: 영문자 포함
- * +1: 숫자 포함
- * +1: 특수문자 포함
- */
+import React from 'react';
 
 interface PasswordStrengthBarProps {
     password: string;
@@ -51,14 +37,12 @@ export function PasswordStrengthBar({ password }: PasswordStrengthBarProps) {
     if (!password) return null;
 
     return (
-        <div className="mt-2 space-y-1.5">
-            {/* 4칸 강도 바 */}
-            <div className="flex gap-1">
+            <div className="flex gap-1 h-1">
                 {[1, 2, 3, 4].map((level) => (
                     <div
                         key={level}
-                        className={`h-1.5 flex-1 rounded-full transition-all duration-300
-                            ${strength.score >= level ? strength.barColor : 'bg-gray-200'}`}
+                        className={`h-full flex-1 rounded-full transition-all duration-300
+                            ${strength.score >= level ? strength.barColor : 'bg-gray-100'}`}
                     />
                 ))}
             </div>

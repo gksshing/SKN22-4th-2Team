@@ -1,20 +1,24 @@
-# Frontend UI/UX Enhancement Review - Authentication Pages
+### 🎨 인증 시스템 UI/UX 고도화 (Premium Redesign)
 
-## 🎨 UI/UX 개발 내용 요약
-- **컨셉**: 프리미엄 글래스모피즘(Glassmorphism) 및 분할 화면(Split-screen) 디자인 적용
-- **변경 사항**:
-    - `LoginForm.tsx`: 데스크톱 기준 좌측 AI 일러스트레이션, 우측 유리 질감의 로그인 폼 배치.
-    - `SignupForm.tsx`: 로그인 페이지와 일관된 프리미엄 스타일 적용 및 회원가입 전용 일러스트/문구 반영.
-    - `index.css`: `.glass-panel`, `.glass-input`, `.text-glow`, `.animate-float` 등 고도화된 UI 구현을 위한 유틸리티 클래스 추가.
-    - **Asset**: `frontend/public/images/auth-bg.png` (AI 생성 프리미엄 이미지) 추가.
+인증 시스템(로그인, 회원가입)의 UI를 홈페이지의 고급스러운 분위기에 맞춰 **Glassmorphism** 스타일로 전면 재설계했습니다.
 
-## 📋 PM 및 Backend 전달용 피드백
-- **Epic: 프론트엔드 화면 개발**
-  - [x] 로그인/회원가입 페이지 전체 리디자인 완료
-  - [x] 독자적인 시각적 정체성을 위한 AI 일러스트레이션 도입
-  - [x] 반응형 레이아웃 처리 (모바일에서는 폼 중심, 데스크톱에서는 풀 비주얼 제공)
+#### 🛠️ 주요 변경 사항
 
-## 🛠️ 기술적 개선 사항
-- Tailwind CSS의 `backdrop-blur`와 `opacity` 조합을 활용한 고퀄리티 유리 효과 구현.
-- 사용자 입력 필드에 `glass-input` 스타일을 적용하여 입력 경험 개선.
-- 주요 텍스트에 `text-glow` 효과와 `animate-float` 애니메이션을 추가하여 정적인 화면에 생동감 부여.
+1.  **로그인 화면 (LoginForm.tsx)**
+    *   **Glassmorphism 디자인**: 반투명 유리 질감의 패널(`glass-panel`)과 입력창(`glass-input`) 적용.
+    *   **동적 배경**: 부드럽게 움직이는 그라데이션 블러 요소를 배경에 추가하여 시각적 깊이감 부여.
+    *   **소셜 로그인 강조**: Google과 Naver 브랜드 컬러를 살린 버튼 디자인으로 시인성 개선.
+    *   **사용자 경험**: "비회원으로 둘러보기" 버튼을 하단에 배치하여 게스트 접근성 유지.
+
+2.  **회원가입 화면 (SignupForm.tsx)**
+    *   **일관된 테마**: 로그인 화면과 동일한 프리미엄 Glass 테마 적용.
+    *   **성공 화면**: 가입 완료 시 화려한 애니메이션과 함께 성공 메시지를 표시하는 전용 뷰 구현.
+    *   **유효성 검사**: 실시간 비밀번호 강도 표시 및 일치 여부 체크 아이콘 강화.
+
+3.  **공통 스타일 (index.css)**
+    *   재사용 가능한 `.glass-panel`, `.glass-input` 유틸리티 클래스 정의.
+    *   `@keyframes float` 애니메이션을 통한 배경 요소의 유기적인 움직임 구현.
+
+#### 📋 피드백 및 다음 단계
+- **Backend 협업**: 현재 구글/네이버 로그인 버튼 클릭 시 백엔드 엔드포인트로 리다이렉트되도록 설정되어 있습니다. (.env의 `VITE_API_BASE_URL` 기반)
+- **리뷰 요청**: UI의 색감, 애니메이션 속도, 글래스모피즘 강도 등에 대해 추가 의견 주시면 반영하겠습니다.
