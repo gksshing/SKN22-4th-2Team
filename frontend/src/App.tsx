@@ -116,21 +116,24 @@ function App() {
                     </div>
                     <div className="flex items-center gap-4">
                         {user ? (
-                            <>
-                                <span className="text-sm text-gray-600 font-medium">👤 {user.email}</span>
+                            <div className="flex items-center gap-3">
+                                <span className="text-sm text-gray-700 font-semibold px-2 py-1 bg-gray-100 rounded-md">👤 {user.email}</span>
                                 <button
                                     type="button"
                                     onClick={logout}
-                                    className="text-xs text-red-500 hover:text-red-700 hover:underline transition-colors font-medium"
+                                    className="text-xs text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded transition-colors font-bold"
                                 >
                                     로그아웃
                                 </button>
-                            </>
+                            </div>
                         ) : (
                             <button
                                 type="button"
-                                onClick={() => setIsGuest(false)}
-                                className="px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                                onClick={() => {
+                                    setAuthView('login');
+                                    setIsGuest(false);
+                                }}
+                                className="px-5 py-2.5 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 transition-all shadow-md active:scale-95"
                             >
                                 로그인 / 회원가입
                             </button>
