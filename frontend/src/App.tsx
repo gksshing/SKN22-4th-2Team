@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, ChangeEvent } from 'react';
 import { TimeoutToast } from './components/Loading/TimeoutToast';
 import { IdeaInput } from './components/Form/IdeaInput';
 import { IpcFilterSelector } from './components/Form/IpcFilterSelector';
@@ -26,7 +26,7 @@ function App() {
 
     // ========== Issue #46/#48: Auth 상태 관리 ==========
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { user, isLoading: isAuthLoading, login, signup, logout, fetchMe, sessionExpiredMsg, clearSessionExpiredMsg } = useAuth();
+    const { user: _user, isLoading: isAuthLoading, login, signup, logout, fetchMe, sessionExpiredMsg, clearSessionExpiredMsg } = useAuth();
     const [authView, setAuthView] = useState<'login' | 'signup'>('login');
     /** 게스트 유저 진입 상태 (AuthGuard 제어용) — Issue #GuestAccess */
     const [isGuest, setIsGuest] = useState<boolean>(() => {
@@ -45,10 +45,10 @@ function App() {
     // Priority 3: 로그인/로그아웃 시 히스토리 즉시 갱신 및 인증 요청 상태 초기화
     useEffect(() => {
         setRefreshCount((c: number) => c + 1);
-        if (user) {
+        if (_user) {
             setIsGuest(false);
         }
-    }, [user]);
+    }, [_user]);
 
     // 게스트 상태 변경 시 sessionStorage 동기화
     useEffect(() => {
@@ -97,7 +97,7 @@ function App() {
 
     return (
         <AuthGuard
-            user={user}
+            user={_user}
             authView={authView}
             setAuthView={setAuthView}
             isAuthLoading={isAuthLoading}
@@ -115,9 +115,9 @@ function App() {
                         <p className="text-gray-500 text-sm font-medium mt-0.5">아이디어만 입력하면 AI가 실시간으로 특허 침해 여부를 분석해 드립니다.</p>
                     </div>
                     <div className="flex items-center gap-4">
-                        {user ? (
+                        {_user ? (
                             <div className="flex items-center gap-3">
-                                <span className="text-sm text-gray-700 font-semibold px-2 py-1 bg-gray-100 rounded-md">👤 {user.email}</span>
+                                <span className="text-sm text-gray-700 font-semibold px-2 py-1 bg-gray-100 rounded-md">👤 {_user.email}</span>
                                 <button
                                     type="button"
                                     onClick={logout}

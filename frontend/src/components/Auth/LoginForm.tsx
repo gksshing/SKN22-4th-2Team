@@ -110,11 +110,11 @@ export function LoginForm({ onSuccess, onNavigateToSignup, onLogin, onGuest, isL
                                 id="login-password"
                                 autoComplete="current-password"
                                 value={password}
-                                onChange={(e) => setPassword(e.target.value)}
+                                onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                                 onBlur={handlePasswordBlur}
                                 disabled={isDisabled}
                                 placeholder="비밀번호"
-                                hasError={false} // Use unified error display below
+                                isError={false} // Use unified error display below
                                 className="border-none bg-transparent p-0 focus:bg-transparent pl-0 pr-8"
                             />
                         </div>
@@ -126,7 +126,7 @@ export function LoginForm({ onSuccess, onNavigateToSignup, onLogin, onGuest, isL
                             <input
                                 type="checkbox"
                                 checked={keepLoggedIn}
-                                onChange={(e) => setKeepLoggedIn(e.target.checked)}
+                                onChange={(e: ChangeEvent<HTMLInputElement>) => setKeepLoggedIn(e.target.checked)}
                                 className="w-5 h-5 rounded border-gray-300 text-[#2563EB] focus:ring-[#2563EB]"
                             />
                             로그인 상태 유지

@@ -160,7 +160,7 @@ export function SignupForm({ onSuccess, onNavigateToLogin, onSignup, onGuest, is
                                 id="signup-password"
                                 autoComplete="new-password"
                                 value={password}
-                                onChange={(e) => setPassword(e.target.value)}
+                                onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                                 onBlur={handlePasswordBlur}
                                 disabled={isDisabled}
                                 placeholder="비밀번호(8자 이상, 영문·숫자·특수문자)"
@@ -173,7 +173,7 @@ export function SignupForm({ onSuccess, onNavigateToLogin, onSignup, onGuest, is
                                 id="signup-confirm"
                                 autoComplete="new-password"
                                 value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                onChange={(e: ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
                                 onBlur={handleConfirmPasswordBlur}
                                 disabled={isDisabled}
                                 placeholder="비밀번호 확인"
