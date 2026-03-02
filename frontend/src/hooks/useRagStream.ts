@@ -94,6 +94,9 @@ export function useRagStream() {
             const reader = response.body.getReader();
             const decoder = new TextDecoder('utf-8');
             let buffer = '';
+            // Issue #51 임시 대응: Backend가 현재 NDJSON(\n 단위 JSON)을 내려줌
+            // TODO(Backend-SSE-전환 후): 아래 파서를 SSE(\n\n + event:/data: 방식)로 원복
+            let ndjsonPercent = 0; // percent 필드가 없을 경우 단계별 추정값
 
             while (true) {
                 const { value, done } = await reader.read();
@@ -102,58 +105,73 @@ export function useRagStream() {
                 // 청크 디코딩 후 버퍼에 누적
                 buffer += decoder.decode(value, { stream: true });
 
-                // SSE 스트림 라인 단위(\n\n) 처리
-                const lines = buffer.split('\n\n');
-
-                // 마지막 묶음은 아직 불완전할 수 있으므로 다시 버퍼에 남김
+                // [임시] NDJSON: \n 단위로 라인 분리 (SSE라면 \n\n 단위)
+                const lines = buffer.split('\n');
+                // 마지막 줄은 아직 불완전할 수 있으므로 버퍼에 남김
                 buffer = lines.pop() || '';
 
                 for (const line of lines) {
-                    if (line.trim() === '') continue;
+                    if (!line.trim()) continue;
 
-                    const eventMatch = line.match(/event:\s*([^\n]+)/);
-                    const dataMatch = line.match(/data:\s*([^\n]+)/);
-
-                    let eventType = 'message';
-                    let dataStr = '';
-
-                    if (eventMatch && dataMatch) {
-                        eventType = eventMatch[1].trim();
-                        dataStr = dataMatch[1].trim();
-                    } else if (line.startsWith('data:')) {
-                        dataStr = line.replace('data:', '').trim();
+                    // SSE 표준 "data: ..." 형식도 같이 허용 (Backend 전환 시 자연스럽게 호환)
+                    let dataStr = line.trim();
+                    if (dataStr.startsWith('data:')) {
+                        dataStr = dataStr.replace(/^data:\s*/, '').trim();
+                    }
+                    if (!dataStr || dataStr.startsWith('event:') || dataStr.startsWith(':')) {
+                        continue; // event:, 주석 라인 무시
                     }
 
-                    if (dataStr) {
-                        try {
-                            const parsedData = JSON.parse(dataStr);
+                    try {
+                        const parsed = JSON.parse(dataStr);
 
-                            // 스켈레톤 초기 숨김 처리
-                            if (parsedData.percent >= 10) {
+                        // ── SSE 표준 방식 처리 (event type 기반) ──
+                        // Backend가 SSE로 전환하면 이 블록이 자동으로 동작
+                        if (parsed.percent !== undefined) {
+                            // percent 필드가 존재하면 SSE progress 방식
+                            if (parsed.percent >= 10) setIsSkeletonVisible(false);
+                            setPercent(parsed.percent);
+                            setMessage(parsed.message || '분석 중...');
+                        } else if (parsed.result !== undefined) {
+                            // SSE complete 방식
+                            setPercent(100);
+                            setMessage('분석이 모두 완료되었습니다.');
+                            setResultData(parsed.result);
+                            setTimeout(() => {
+                                setIsAnalyzing(false);
+                                setIsComplete(true);
+                            }, 1500);
+                        }
+                        // ── NDJSON 임시 방식 처리 (status 필드 기반) ──
+                        else if (parsed.status !== undefined) {
+                            if (parsed.status === 'processing') {
+                                // 첫 청크 도착 시 스켈레톤 숨김
                                 setIsSkeletonVisible(false);
-                            }
-
-                            if (eventType === 'progress') {
-                                setPercent(parsedData.percent || 0);
-                                setMessage(parsedData.message || '');
-                            } else if (eventType === 'complete') {
+                                ndjsonPercent = Math.min(ndjsonPercent + 15, 40);
+                                setPercent(ndjsonPercent);
+                                setMessage(parsed.message || '분석을 시작합니다...');
+                            } else if (parsed.status === 'searching') {
+                                ndjsonPercent = Math.min(ndjsonPercent + 25, 80);
+                                setPercent(ndjsonPercent);
+                                setMessage(parsed.message || '특허 DB 검색 중...');
+                            } else if (parsed.status === 'complete') {
                                 setPercent(100);
                                 setMessage('분석이 모두 완료되었습니다.');
-                                setResultData(parsedData.result);
-
+                                if (parsed.result) setResultData(parsed.result);
                                 setTimeout(() => {
                                     setIsAnalyzing(false);
                                     setIsComplete(true);
                                 }, 1500);
-                            } else if (eventType === 'empty' || parsedData.status === 'empty') {
+                            } else if (parsed.status === 'empty') {
                                 throw new Error('NOT_FOUND');
-                            } else if (eventType === 'error') {
+                            } else if (parsed.status === 'error') {
                                 throw new Error('NETWORK_ERROR');
                             }
-                        } catch (e: any) {
-                            if (e.message === 'NOT_FOUND' || e.message === 'NETWORK_ERROR') throw e;
-                            console.error('SSE JSON Parsing Error:', e, 'Raw Data:', dataStr);
                         }
+                    } catch (e: any) {
+                        if (e.message === 'NOT_FOUND' || e.message === 'NETWORK_ERROR') throw e;
+                        // JSON 파싱 실패 — 원문 노출 방지를 위해 무시
+                        console.warn('[useRagStream] JSON 파싱 실패 (무시):', line.substring(0, 80));
                     }
                 }
             }

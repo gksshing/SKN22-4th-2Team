@@ -21,3 +21,35 @@ export interface RagStreamState {
     message: string;
     resultData: RagAnalysisResult | null;
 }
+
+// ============================================================
+// Issue #51: Backend-Frontend 스트리밍 계약 타입 (SSE 표준 기준)
+// TODO: Backend가 SSE 표준으로 전환되면 파서 복원 시 이 타입을 그대로 사용
+// ============================================================
+
+/** 표준 SSE 이벤트 타입 목록 */
+export type StreamEventType = 'progress' | 'complete' | 'empty' | 'error';
+
+/** event:progress 이벤트의 data 스키마 */
+export interface StreamProgressEvent {
+    percent: number;
+    message: string;
+}
+
+/** event:complete 이벤트의 data 스키마 */
+export interface StreamCompleteEvent {
+    result: RagAnalysisResult;
+}
+
+// ============================================================
+// Issue #51: 임시 NDJSON 호환 타입 (Backend SSE 전환 전까지 사용)
+// TODO: Backend가 SSE로 전환되면 아래 타입 제거
+// ============================================================
+
+/** Backend가 현재 내리는 단순 JSON 라인 형식 (임시) */
+export interface NdjsonStreamLine {
+    status: 'processing' | 'searching' | 'complete' | 'error' | 'empty';
+    message?: string;
+    percent?: number;
+    result?: RagAnalysisResult;
+}
