@@ -13,8 +13,6 @@ import { SessionExpiredToast } from './components/Auth/SessionExpiredToast';
 import { AuthGuard } from './components/Auth/AuthGuard';
 import { GlobalLoading } from './components/Loading/GlobalLoading';
 import { AuthErrorToast } from './components/Auth/AuthErrorToast';
-import { LoginForm } from './components/Auth/LoginForm';
-import { SignupForm } from './components/Auth/SignupForm';
 
 
 function App() {
