@@ -60,4 +60,4 @@ Auth 시스템(로그인, 회원가입, 소셜 로그인)의 **완전한 제거 
 1. `develop` 브랜치 → PR 생성
 2. 이 리뷰 문서를 PR Description에 첨부
 3. `main` 브랜치로 Squash Merge
-.
+..
