@@ -165,7 +165,8 @@ def create_app() -> FastAPI:
 
     # 6. 프론트엔드 서빙 (Vanilla JS vs React dist 자동 감지)
     # React 빌드 산출물(dist)이 있으면 우선 서빙하고, 없으면 기본 frontend 폴더를 서빙합니다.
-    import os
+    # ── 프론트엔드 정적 파일 서빙 설정 ────────────────────────────────────
+    # 빌드된 React 에셋(dist)이 있으면 우선 사용, 없으면 소스 폴더(frontend) 사용
     from fastapi.responses import FileResponse
     from fastapi.staticfiles import StaticFiles
     
