@@ -19,7 +19,7 @@ interface HistorySidebarProps {
 }
 
 // 컴포넌트 외부 상수: 매 렌더마다 재생성되지 않도록 하여 useCallback deps 문제 해소
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 export function HistorySidebar({ onSelectIdea, isAnalyzing, refreshTrigger }: HistorySidebarProps) {
 

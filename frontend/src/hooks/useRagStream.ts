@@ -52,8 +52,9 @@ export function useRagStream() {
 
         try {
             // 백엔드 FastAPI SSE 엔드포인트 호출 (POST)
-            // 시니어 리뷰 반영: VITE_API_URL 환경변수 사용
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+            // 시니어 리뷰 반영: VITE_API_BASE_URL 환경변수 사용
+            // 운영 환경(Docker)에서 같은 origin인 경우 서버 주소 생략(상대경로) 가능하도록 기본값 '' 설정
+            const apiUrl = import.meta.env.VITE_API_BASE_URL || '';
             // 백엔드 AnalyzeRequest 스키마 필드명에 맞춰 요청 Body 구성
             const reqBody = {
                 user_idea: userIdea,
