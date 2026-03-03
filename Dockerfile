@@ -44,9 +44,10 @@ RUN rm -rf dist && npm run build
 # 컴파일러 및 빌드 도구 없이 순수 런타임 환경만 구성합니다.
 FROM python:3.11-slim AS runtime
 
-# 런타임 OS 패키지 (언어 모델 로딩에 필요한 공유 라이브러리 최소 설치)
+# 런타임 OS 패키지 (언어 모델 및 DB 드라이버 로딩에 필요한 공유 라이브러리 최소 설치)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
+    libpq5 \
     && rm -rf /var/lib/apt/lists/*
 
 # ── 런타임 환경 설정 및 캐시 경로 리다이렉트 ──────────────────────────────
