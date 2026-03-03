@@ -24,6 +24,10 @@
                     "value": "short-cut/prod/app"
                 },
                 {
+                    "name": "ALLOWED_ORIGINS",
+                    "value": "*"
+                },
+                {
                     "name": "GOOGLE_CLIENT_ID",
                     "value": "GOOGLE_CLIENT_ID_PLACEHOLDER"
                 },
