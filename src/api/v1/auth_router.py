@@ -81,8 +81,8 @@ async def login(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"로그인 처리 중 오류: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="로그인 처리 중 오류가 발생했습니다.")
+        logger.error(f"[Auth] 로그인 처리 중 예외 발생: {str(e)} (Email: {request.email})", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"로그인 처리 중 오류가 발생했습니다: {str(e)}")
 
 
 @router.get("/me", response_model=UserResponse, summary="내 정보 조회")

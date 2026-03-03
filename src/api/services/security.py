@@ -14,8 +14,14 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plain password against its hash."""
     try:
-        return pwd_context.verify(plain_password, hashed_password)
-    except Exception:
+        result = pwd_context.verify(plain_password, hashed_password)
+        if not result:
+            import logging
+            logging.getLogger(__name__).warning("Password verification failed (mismatch).")
+        return result
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Password verification error: {e}", exc_info=True)
         return False
 
 def get_password_hash(password: str) -> str:

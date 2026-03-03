@@ -115,13 +115,13 @@ def create_app() -> FastAPI:
     # CORS 설정: Vite 개발 서버(5173) 및 기존 3000 포트 허용
     allowed_origins = os.getenv(
         "ALLOWED_ORIGINS", 
-        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173"
+        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,http://13.125.222.215,http://13.125.222.215:8000"
     ).split(",")
     
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=allowed_origins,
-        allow_credentials=True,  # 쿠키 전달을 위해 반드시 True 설정
+        allow_origins=allowed_origins if os.getenv("APP_ENV") == "production" else ["*"],
+        allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
