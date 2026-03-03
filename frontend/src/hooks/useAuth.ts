@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { UserResponse } from '../types/auth';
 
 // 백엔드 API 베이스 URL
-const API_BASE = import.meta.env.VITE_API_URL || '';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 // localStorage 키
 const TOKEN_KEY = 'shortcut_access_token';
