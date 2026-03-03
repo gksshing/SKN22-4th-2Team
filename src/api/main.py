@@ -112,15 +112,24 @@ def create_app() -> FastAPI:
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
     # 3. 미들웨어 추가 (순서는 나중에 등록한 것이 먼저 실행됨)
-    # CORS 설정: Vite 개발 서버(5173) 및 기존 3000 포트 허용
-    allowed_origins = os.getenv(
+    # CORS 설정: ALLOWED_ORIGINS 환경변수로 허용 도메인을 동적으로 주입합니다.
+    # - 개발 환경(APP_ENV != production): ["*"] 허용 (로컬/개발용)
+    # - 운영 환경(APP_ENV=production): ALLOWED_ORIGINS 값이 "*"이면 [\"*\"], 아니면 콤마 구분된 도메인 리스트 적용
+    _raw_origins = os.getenv(
         "ALLOWED_ORIGINS", 
-        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,http://13.125.222.215,http://13.125.222.215:8000"
-    ).split(",")
-    
+        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173"
+    ).strip()
+    if _raw_origins == "*":
+        allowed_origins = ["*"]
+    else:
+        allowed_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+
+    # 프론트엔드가 같은 컨테이너(FastAPI)에서 서빙될 때는 same-origin 요청이므로 CORS가 불필요합니다.
+    # 단, API를 별도의 도메인에서 직접 호출하는 경우를 대비해 CORS 미들웨어는 항상 등록합니다.
+    _is_production = os.getenv("APP_ENV") == "production"
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=allowed_origins if os.getenv("APP_ENV") == "production" else ["*"],
+        allow_origins=allowed_origins if _is_production else ["*"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -178,14 +187,24 @@ def create_app() -> FastAPI:
     @app.exception_handler(Exception)
     async def global_exception_handler(request: Request, exc: Exception):
         req_id = uuid.uuid4().hex
-        # exc_info=True를 사용하여 에러 발생 지점의 trace를 모두 기록합니다.
-        logger.error(f"[GlobalException] Internal Error at {request.url.path} (ReqID: {req_id}): {str(exc)}", exc_info=True)
+        logger.error(f"[GlobalException] Unhandled Error at {request.url.path} (ReqID: {req_id}): {str(exc)}")
+        
+        # FastAPI 미들웨어가 500 에러 시 가끔 동작하지 않아 브라우저에서 CORS 에러로 덮어씌워지는 현상을 방지하기 위해 명시적 헤더 추가
+        origin = request.headers.get("origin")
+        allowed_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
+        headers = {}
+        if origin and (origin in allowed_origins or "*" in allowed_origins or os.getenv("APP_ENV") != "production"):
+            headers["Access-Control-Allow-Origin"] = origin
+            headers["Access-Control-Allow-Credentials"] = "true"
+            
         return JSONResponse(
             status_code=500,
             content={
                 "detail": f"Internal Server Error: {str(exc)}",
-                "request_id": req_id
-            }
+                "request_id": req_id,
+                "error_type": type(exc).__name__
+            },
+            headers=headers
         )
 
     # 5. API Endpoints 라우터 통합

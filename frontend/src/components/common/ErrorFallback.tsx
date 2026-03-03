@@ -7,6 +7,7 @@ export type ErrorType =
     | 'RATE_LIMIT'
     | 'TIMEOUT'
     | 'NETWORK_ERROR'
+    | 'SERVER_ERROR'
     | undefined;
 
 interface ErrorFallbackProps {
