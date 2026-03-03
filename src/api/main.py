@@ -137,7 +137,26 @@ def create_app() -> FastAPI:
     # 보안 미들웨어 등록 (ASGI 기반)
     app.add_middleware(SecurityMiddleware)
 
-    # 4. 전역 예외 처리 (Global Exception Handlers)
+    # 4. 요청 로깅 미들웨어 (모든 요청의 시작/종료 로깅)
+    @app.middleware("http")
+    async def log_requests(request: Request, call_next):
+        req_id = uuid.uuid4().hex
+        logger.info(f"[RequestStart] {request.method} {request.url.path} (ReqID: {req_id})")
+        
+        from time import time
+        start_time = time()
+        
+        try:
+            response = await call_next(request)
+            duration = round(time() - start_time, 3)
+            logger.info(f"[RequestEnd] {request.method} {request.url.path} - Status: {response.status_code} (ReqID: {req_id}, Latency: {duration}s)")
+            return response
+        except Exception as e:
+            duration = round(time() - start_time, 3)
+            logger.error(f"[RequestError] {request.method} {request.url.path} - Failed (ReqID: {req_id}, Latency: {duration}s): {str(e)}")
+            raise e
+
+    # 5. 전역 예외 처리 (Global Exception Handlers)
     @app.exception_handler(PromptInjectionError)
     async def prompt_injection_exception_handler(request: Request, exc: PromptInjectionError):
         req_id = uuid.uuid4().hex

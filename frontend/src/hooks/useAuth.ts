@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { UserResponse } from '../types/auth';
 
 // 백엔드 API 베이스 URL
-const API_BASE = import.meta.env.VITE_API_URL || '';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 // localStorage 키
 const TOKEN_KEY = 'shortcut_access_token';
@@ -33,7 +33,7 @@ export const useAuth = (): UseAuthReturn => {
     const restoreUser = useCallback(async () => {
         const token = localStorage.getItem(TOKEN_KEY);
         if (!token) {
-            setState(s => ({ ...s, isLoading: false }));
+            setState((s: AuthState) => ({ ...s, isLoading: false }));
             return;
         }
         try {
@@ -61,7 +61,8 @@ export const useAuth = (): UseAuthReturn => {
 
     /** 로그인: 이메일 + 비밀번호 → JWT 저장 → 사용자 정보 세팅 */
     const login = useCallback(async (email: string, password: string) => {
-        setState(s => ({ ...s, isLoading: true, error: null }));
+        console.log('[useAuth] Attempting login for:', email);
+        setState((s: AuthState) => ({ ...s, isLoading: true, error: null }));
         try {
             const res = await fetch(`${API_BASE}/api/v1/auth/login`, {
                 method: 'POST',
@@ -82,17 +83,20 @@ export const useAuth = (): UseAuthReturn => {
             if (!meRes.ok) throw new Error('사용자 정보를 가져올 수 없습니다.');
             const user: UserResponse = await meRes.json();
 
+            console.info('[useAuth] Login success:', user.email);
             setState({ user, isAuthenticated: true, isLoading: false, error: null });
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : '로그인 중 오류가 발생했습니다.';
-            setState(s => ({ ...s, isLoading: false, error: msg }));
+            console.error('[useAuth] Login failed:', e);
+            setState((s: AuthState) => ({ ...s, isLoading: false, error: msg }));
             throw e; // 폼 레벨에서 처리 가능하도록 re-throw
         }
     }, []);
 
     /** 회원가입: 이메일 + 비밀번호 + 이름 → 자동 로그인 */
     const signup = useCallback(async (email: string, password: string, name?: string) => {
-        setState(s => ({ ...s, isLoading: true, error: null }));
+        console.log('[useAuth] Starting signup for:', email);
+        setState((s: AuthState) => ({ ...s, isLoading: true, error: null }));
         try {
             const res = await fetch(`${API_BASE}/api/v1/auth/signup`, {
                 method: 'POST',
@@ -104,12 +108,14 @@ export const useAuth = (): UseAuthReturn => {
                 throw new Error(data.detail || '회원가입에 실패했습니다.');
             }
             // 회원가입 성공 → 자동 로그인
+            console.info('[useAuth] Signup success, attempting auto-login.');
             await login(email, password);
         } catch (e: unknown) {
             // login() 실패 시 이미 state 업데이트됨
             if (!(e instanceof Error && e.message.includes('로그인'))) {
                 const msg = e instanceof Error ? e.message : '회원가입 중 오류가 발생했습니다.';
-                setState(s => ({ ...s, isLoading: false, error: msg }));
+                console.error('[useAuth] Signup failed:', e);
+                setState((s: AuthState) => ({ ...s, isLoading: false, error: msg }));
             }
             throw e;
         }
@@ -122,7 +128,7 @@ export const useAuth = (): UseAuthReturn => {
     }, []);
 
     const clearError = useCallback(() => {
-        setState(s => ({ ...s, error: null }));
+        setState((s: AuthState) => ({ ...s, error: null }));
     }, []);
 
     return {
