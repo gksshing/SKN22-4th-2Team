@@ -31,7 +31,7 @@ export function useHistory(): UseHistoryResult {
         setError(null);
 
         try {
-            const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+            const apiUrl = import.meta.env.VITE_API_BASE_URL || '';
             // [11번 리뷰 반영] Critical: 세션 ID URL 노출 제거
             // ?session_id=... 쿼리파라미터는 브라우저 히스토리/서버 로그에 노드되므로
             // X-Session-ID 헤더만 사용하도록 백엔드와 협의합니다.

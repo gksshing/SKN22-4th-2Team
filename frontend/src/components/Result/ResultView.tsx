@@ -72,7 +72,7 @@ export function ResultView({ idea, resultData, onReset }: ResultViewProps) {
     const handleEmailResult = async () => {
         setIsEmailing(true);
         try {
-            const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+            const apiUrl = import.meta.env.VITE_API_BASE_URL || '';
             const res = await fetch(`${apiUrl}/api/v1/notify/email`, {
                 method: 'POST',
                 headers: {
