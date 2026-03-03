@@ -83,6 +83,8 @@ export function useRagStream() {
                     throw new Error('TOKEN_EXCEEDED');
                 } else if (response.status === 404) {
                     throw new Error('NOT_FOUND');
+                } else if (response.status >= 500) {
+                    throw new Error('SERVER_ERROR');
                 } else {
                     throw new Error('NETWORK_ERROR');
                 }
@@ -183,6 +185,12 @@ export function useRagStream() {
                         title: '유사 특허 결과를 찾지 못했습니다 📭',
                         message: '입력하신 내용과 일치하는 선행 특허가 없습니다.',
                         errorType: 'NOT_FOUND',
+                    });
+                } else if (error.message === 'SERVER_ERROR') {
+                    setErrorInfo({
+                        title: '서버 분석 오류 🛠️',
+                        message: '백엔드 서버에서 분석 중 오류가 발생했습니다. (Pinecone API 키 연동 상태를 확인해 주세요)',
+                        errorType: 'SERVER_ERROR',
                     });
                 } else {
                     setErrorInfo({
