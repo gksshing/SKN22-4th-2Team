@@ -122,6 +122,7 @@ export function useRagStream() {
 
                     try {
                         const parsed = JSON.parse(dataStr);
+                        console.debug(`[useRagStream] SSE Event: ${eventType}`, parsed);
 
                         if (eventType === 'progress') {
                             // 스켈레톤 숨김 (처음 progress 이벤트부터)
@@ -129,6 +130,7 @@ export function useRagStream() {
                             setPercent(parsed.percent ?? 0);
                             setMessage(parsed.message || '분석 중...');
                         } else if (eventType === 'complete') {
+                            console.info('[useRagStream] Analysis Complete:', parsed.result);
                             setPercent(100);
                             setMessage('분석이 모두 완료되었습니다.');
                             setResultData(parsed.result);
@@ -137,13 +139,15 @@ export function useRagStream() {
                                 setIsComplete(true);
                             }, 1500);
                         } else if (eventType === 'empty') {
+                            console.warn('[useRagStream] Received empty event');
                             throw new Error('NOT_FOUND');
                         } else if (eventType === 'error') {
+                            console.error('[useRagStream] Received error event:', parsed.detail);
                             throw new Error('NETWORK_ERROR');
                         }
                     } catch (e: any) {
                         if (e.message === 'NOT_FOUND' || e.message === 'NETWORK_ERROR') throw e;
-                        console.error('[useRagStream] SSE JSON 파싱 오류:', e, '원문:', dataStr.substring(0, 80));
+                        console.error('[useRagStream] SSE parsing/processing error:', e, 'Raw block:', block);
                     }
                 }
             }
